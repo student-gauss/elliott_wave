@@ -1,0 +1,117 @@
+\documentclass[12pt]{article}
+\usepackage{fullpage,enumitem,amsmath,amssymb,graphicx,bm,listings,algpseudocode,hyperref}
+\newcommand{\vect}[1]{\boldsymbol{#1}}
+
+\lstdefinestyle{custom}{
+  basicstyle=\footnotesize\ttfamily,
+  language=Python,
+}
+\begin{document}
+
+\begin{center}
+{\Large CS221 Fall 2016 Project [p-proposal]}
+
+\begin{tabular}{rl}
+SUNet ID: & motonari \\
+Name: & Motonari ITO \\
+Collaborators: & Shiva Sundar
+\end{tabular}
+\end{center}
+
+\section*{Scope}
+
+\subsection*{Elliott Wave Principle}
+
+Elliott Wave Principle is a hypothesis that stock market price can be
+modeled as a set of state and transition rules, and by determining the
+current state, it suggests we could predict the future stock more
+accurately than a random chance.
+
+The state and transition rules are defined in terms of a sequence of
+waves, namely wave 1, 2, 3, 4, 5, followed by wave A, B, and C as
+illustrated below. Each wave may have this sequence as the
+substructure, hence the nested structure. The hypothesis suggests that
+the nested structure is applied all the way from yearly to hourly
+changes.
+
+Start and end time of each wave is determined by, but not limited to,
+these rules. Note that, even if we follow all the rules strictly,
+there can be multiple ways to associate a time period to a wave. 
+
+[TODO] (Rules)
+
+
+\subsection*{Input and output behavior}
+
+[TODO] Given a history of a stock market, the system outputs the
+predicted price change for tomorrow. \footnote{We could output the
+  full wave structures as a nested time range table, but I feel this
+  approach is easier to implement in various different algorithm.}
+
+For example,
+
+\begin{description}
+\item[Input] AAPL stock data (Dec 12, 1980 - Oct 22, 2016), obtained from \url{https://finance.yahoo.com/quote/AAPL/history?p=AAPL}
+\item[Output] Predicted closing stock price to be up or down.
+\end{description}
+
+\subsection*{Evaluation metric to success}
+
+[TODO] some idea so far:
+
+\begin{itemize}
+\item Run the system on various stock, wait for tomorrow, and see if
+  how it did. I think it's more fun. We can use contingency table to plot true-positive, false-positive, true-negative, and false-negative, and reports some metrics such as accuracy and F1-score.
+\item Compare to some well-known stock prediction tool. What tool? 
+\end{itemize}
+      
+\section*{Baseline and Oracle}
+
+\subsection*{Baseline}
+
+Use Dynamic Programming to find the wave structure with simlified
+Elliott Wave rules. Based on the wave of today, predict if tomorrow's
+price is going up or down.
+
+\begin{enumerate}
+ \item There are five impulse waves, followed by three corrective waves.
+ \item Wave 2 doesn’t fall under (or upper if decreasing trend) the start of Wave 1.
+ \item Wave 3 is the longest.
+ \item Wave 4 doesn’t go in the territory of Wave 1.
+ \item Each wave has a same substructure. For Baseline, we restrict the shortest wave to be 10 days. (?)
+\end{enumerate}
+
+\subsection*{Oracle}
+
+[TODO] Maybe... how about taking some 30 days time period which is
+known to be increasing wave. For example, AAPL's June 27, 2016 to Jul
+20, 2016. Oracle predicts $+$ for all days. The ground truth is that
+we have two bad days. So, Oracle accuracy is 28 / 30.
+
+\section*{Challenges and Topics}
+
+Some idea:
+
+\begin{itemize}
+\item Incorporate more Elliott rules into the dynamic programming and
+  see if it increases the accuracy.
+\item Define some mathematical curve of X nested level Elliott
+  wave. Use linear regression to find the parameter to fit.p
+\item You mentioned NN. I have no idea how to apply NN in this
+  context. Could you elaborate?
+\item Elliott is 100 years ago guy and his rule book may be out
+  dated. Use RL to find the new rule (policy).
+\end{itemize}
+
+\section*{References}
+
+\begin{itemize}
+\item \url{https://en.wikipedia.org/wiki/Elliott_wave_principle}
+\item \url{http://studyofcycles.com}
+\end{itemize}
+     
+\end{document}
+
+
+
+
