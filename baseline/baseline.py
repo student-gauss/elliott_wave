@@ -4,6 +4,7 @@ import numpy as np
 import algorithm
 import model
 import matplotlib.pyplot as plt
+import cProfile
 
 aapl = {}
 
@@ -26,34 +27,26 @@ def stockForDate(date):
     return aapl[date] / ratio
 
 
-date = np.datetime64('1980-12-12')
+date = np.datetime64('2016-07-15')
 stocks = []
 
 while date < np.datetime64('2016-10-14'):
     stocks += [stockForDate(date)]
     date += np.timedelta64(1, 'D')
-
     
-problem = model.ElliottWaveProblem(0, len(stocks), lambda x:stocks[x], step=100, partialSequence=True)
+problem = model.ElliottWaveProblem(0, len(stocks), lambda x:stocks[x], step=30, partialSequence=True)
 ucs = algorithm.UniformCostSearch()
-ucs.solve(problem)
+cProfile.run('ucs.solve(problem)')
 
-cutIndexes = []
-lastEndIndex = 0
-for action in ucs.actions:
-    cutDate = np.datetime64('1980-12-12') + np.timedelta64(action, 'D')
-    cutIndexes += [action]
-    print cutDate
-#    print action - lastEndIndex
-    lastEndIndex = action
-
-
-fig = plt.figure(figsize=(15, 10))
+fig = plt.figure(figsize=(9, 6))
 ax = fig.add_subplot(111)
 ax.plot(range(0, len(stocks)), stocks)
 
-pricesAtCutPoint = [stocks[cutIndex] for cutIndex in cutIndexes]
-print pricesAtCutPoint
-ax.plot(cutIndexes, pricesAtCutPoint, linestyle='-', color='red')
+for action in ucs.actions:
+    waveType, endIndex, subsequence = action
+    print '%s %d' % (waveType, endIndex)
+    if len(subsequence) != 0:
+        print '    %s' % subsequence
 
-plt.savefig("ucs_aapl.png")
+
+# plt.savefig("ucs_aapl.png")
