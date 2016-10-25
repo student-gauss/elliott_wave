@@ -18,89 +18,73 @@ Collaborators: & Shiva Sundar
 \end{tabular}
 \end{center}
 
-\section*{Scope}
+\section{Scope}
 
-\subsection*{Elliott Wave Principle}
+\subsection{Elliott Wave Principle}
 
-Elliott Wave Principle is a hypothesis that stock market price can be
-modeled as a set of state and transition rules, and by determining the
-current state, it suggests we could predict the future stock more
-accurately than a random chance.
+Elliott Wave Principle (EWP) is a hypothesis that stock market price
+can be modeled as a sequence of waves which shape follow some defined
+rules.
 
-The state and transition rules are defined in terms of a sequence of
-waves, namely wave 1, 2, 3, 4, 5, followed by wave A, B, and C as
-illustrated below. Each wave may have this sequence as the
-substructure, hence the nested structure. The hypothesis suggests that
-the nested structure is applied all the way from yearly to hourly
-changes.
+By determining the wave shape of the day, EWP suggests we can predict
+the future market price more accurately than a random chance.
 
-Start and end time of each wave is determined by, but not limited to,
-these rules. Note that, even if we follow all the rules strictly,
-there can be multiple ways to associate a time period to a wave. 
+\subsection{Input and output behavior}
 
-[TODO] (Rules)
-
-
-\subsection*{Input and output behavior}
-
-[TODO] Given a history of a stock market, the system outputs the
-predicted price change for tomorrow. \footnote{We could output the
-  full wave structures as a nested time range table, but I feel this
-  approach is easier to implement in various different algorithm.}
-
-For example,
+Given a history of a stock market, the system outputs the predicted
+price change 30 days later.
 
 \begin{description}
 \item[Input] AAPL stock data (Dec 12, 1980 - Oct 22, 2016), obtained from \url{https://finance.yahoo.com/quote/AAPL/history?p=AAPL}
-\item[Output] Predicted closing stock price to be up or down.
+\item[Output] \$123 (Predicted closing stock price of Nov 22, 2016)
 \end{description}
 
-\subsection*{Evaluation metric to success}
+\subsection{Evaluation metric to success}
 
-[TODO] some idea so far:
-
-\begin{itemize}
-\item Run the system on various stock, wait for tomorrow, and see if
-  how it did. I think it's more fun. We can use contingency table to plot true-positive, false-positive, true-negative, and false-negative, and reports some metrics such as accuracy and F1-score.
-\item Compare to some well-known stock prediction tool. What tool? 
-\end{itemize}
+Taking a history of some stock price, the evaluation process runs the
+system against some past subrange of the period and compares the
+output to the actual price.
       
-\section*{Baseline and Oracle}
+\section{Baseline and Oracle}
 
-\subsection*{Baseline}
+\subsection{Baseline}
 
-Use Dynamic Programming to find the wave structure with simlified
-Elliott Wave rules. Based on the wave of today, predict if tomorrow's
-price is going up or down.
+The baseline approach uses Dynamic Programming to find the wave
+structure with simlified Elliott Wave rules. Then, based on the wave
+of today, it predicts the price after 30 days.
+
+Here is the simplified rules.
 
 \begin{enumerate}
- \item There are five impulse waves, followed by three corrective waves.
- \item Wave 2 doesn’t fall under (or upper if decreasing trend) the start of Wave 1.
- \item Wave 3 is the longest.
- \item Wave 4 doesn’t go in the territory of Wave 1.
- \item Each wave has a same substructure. For Baseline, we restrict the shortest wave to be 10 days. (?)
+ \item There are five impulse waves (1, 2, 3, 4, and 5), followed by
+   three corrective waves (A, B, and C).
+ \item Wave 2 never retraces more than 100\% of Wave 1.
+ \item Wave 3 is longer than Wave 1 and 2. 
+ \item Wave 4 does not enter into the same price territory as Wave 1.
 \end{enumerate}
 
-\subsection*{Oracle}
+[TODO] 
 
-[TODO] Maybe... how about taking some 30 days time period which is
-known to be increasing wave. For example, AAPL's June 27, 2016 to Jul
-20, 2016. Oracle predicts $+$ for all days. The ground truth is that
-we have two bad days. So, Oracle accuracy is 28 / 30.
+\subsection{Oracle}
 
-\section*{Challenges and Topics}
+The oracle approach asks an expert opinion (Shiva Sunder) to label the
+wave structure of the full history. Then, for each day in the history,
+it calculates the mean squared error between the wave and the actual
+price. It gives the accuracy of prediction given Elliott wave
+classification is correct.
 
-Some idea:
+[TODO] 
+
+\section{Challenges and Topics}
 
 \begin{itemize}
 \item Incorporate more Elliott rules into the dynamic programming and
   see if it increases the accuracy.
 \item Define some mathematical curve of X nested level Elliott
   wave. Use linear regression to find the parameter to fit.p
-\item You mentioned NN. I have no idea how to apply NN in this
-  context. Could you elaborate?
-\item Elliott is 100 years ago guy and his rule book may be out
-  dated. Use RL to find the new rule (policy).
+\item EWP is an old theory and can be out dated in the current stock
+  behavior. We try Reenforcement Learning to find the new rule
+  (policy).
 \end{itemize}
 
 \section*{References}
