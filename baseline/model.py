@@ -35,26 +35,7 @@ class ElliottWaveProblem(algorithm.SearchProblem):
             return state[0] == self.WAVE_C
 
     def getActionAndCost(self, waveType, startIndex, endIndex):
-        if self.step == 1:
-            return ((waveType, endIndex, []), math.log(3 ** (endIndex - startIndex)))
-        
-        newStep = self.step / 30 + 1
-
-        result = cacheSubProblem.get((startIndex, endIndex, newStep))
-        if result == None:
-            subProblem = ElliottWaveProblem(startIndex, endIndex, self.stockForDateIndex, newStep, partialSequence=False)
-            ucs = algorithm.UniformCostSearch()
-            ucs.solve(subProblem)
-        
-            if ucs.actions == None:
-                # No solution was found. It's not good.
-                result = ((waveType, endIndex, []), float('inf'))
-            else:
-                result = ((waveType, endIndex, ucs.actions), ucs.totalCost)
-
-            cacheSubProblem[(startIndex, endIndex, newStep)] = result
-
-        return result
+        return ((waveType, endIndex), math.log(3 ** (endIndex - startIndex)))
     
     def getMin(self, startIndex, duration):
         endIndex = min(startIndex + duration, self.endIndex)
@@ -81,7 +62,7 @@ class ElliottWaveProblem(algorithm.SearchProblem):
         
         if currentWaveType == None:
             # When partial sequence is allowed, the first wave can be anything
-            action = (self.WAVE_0, self.startIndex, [])
+            action = (self.WAVE_0, self.startIndex)
             result += [(action, self.makeNextState(self.WAVE_0, self.startIndex, True, longestDurationSoFar, startPriceW1, endPriceW1, startPriceWA), 0)]
             result += [(action, self.makeNextState(self.WAVE_0, self.startIndex, False, longestDurationSoFar, startPriceW1, endPriceW1, startPriceWA), 0)]
             
@@ -266,7 +247,6 @@ ucs.solve(problem)
 
 lastEndIndex = 0
 for action in ucs.actions:
-#    print action
-#    print action - lastEndIndex
-    lastEndIndex = action
+    waveType, segmentEndIndex = action
+    print waveType, segmentEndIndex
 
