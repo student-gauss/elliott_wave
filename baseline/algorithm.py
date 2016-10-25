@@ -9,6 +9,9 @@ class SearchAlgorithm:
     def solve(self, problem): raise NotImplementedError('Override me.')
 
 class UniformCostSearch(SearchAlgorithm):
+    def __init__(self):
+        self.actions = None
+        
     def solve(self, problem):
         self.actions = None
         self.totalCost = None

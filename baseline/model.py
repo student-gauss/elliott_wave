@@ -5,7 +5,7 @@ cacheSubProblem = {}
 
 class ElliottWaveProblem(algorithm.SearchProblem):
     
-    def __init__(self, startIndex, endIndex, stockForDateIndex, step, partialSequence):
+    def __init__(self, startIndex, endIndex, stockForDateIndex, step, openStart, openEnd):
         self.WAVE_0 = 'wave_0'
         self.WAVE_1 = 'wave_1'
         self.WAVE_2 = 'wave_2'
@@ -20,7 +20,8 @@ class ElliottWaveProblem(algorithm.SearchProblem):
         self.startIndex = startIndex
         self.endIndex = endIndex
         self.step = step
-        self.partialSequence = partialSequence
+        self.openStart = openStart
+        self.openEnd = openEnd
         self.cacheMinPoint = {}
         self.cacheMaxPoint = {}
         
@@ -29,19 +30,19 @@ class ElliottWaveProblem(algorithm.SearchProblem):
         return (None, None, None, 0, None, None, None)
         
     def isEnd(self, state):
-        if self.partialSequence:
+        if self.openEnd:
             return state[1] == self.endIndex
         else:
             return state[0] == self.WAVE_C
 
     def getActionAndCost(self, waveType, startIndex, endIndex):
-        return ((waveType, endIndex), math.log(3 ** (endIndex - startIndex)))
+        return ((waveType, endIndex), math.log(1.001 ** (endIndex - startIndex)))
     
     def getMin(self, startIndex, duration):
         endIndex = min(startIndex + duration, self.endIndex)
         result = self.cacheMinPoint.get((startIndex, endIndex))
         if result == None:
-            result = min((self.stockForDateIndex(index), index) for index in range(startIndex, endIndex))
+            result = min((self.stockForDateIndex(index), index + 1) for index in range(startIndex, endIndex))
             self.cacheMinPoint[(startIndex, endIndex)] = result
         return result
 
@@ -49,7 +50,7 @@ class ElliottWaveProblem(algorithm.SearchProblem):
         endIndex = min(startIndex + duration, self.endIndex)
         result = self.cacheMaxPoint.get((startIndex, endIndex))
         if result == None:
-            result = max((self.stockForDateIndex(index), index) for index in range(startIndex, endIndex))
+            result = max((self.stockForDateIndex(index), index + 1) for index in range(startIndex, endIndex))
             self.cacheMaxPoint[(startIndex, endIndex)] = result
         return result
     
@@ -66,30 +67,30 @@ class ElliottWaveProblem(algorithm.SearchProblem):
             result += [(action, self.makeNextState(self.WAVE_0, self.startIndex, True, longestDurationSoFar, startPriceW1, endPriceW1, startPriceWA), 0)]
             result += [(action, self.makeNextState(self.WAVE_0, self.startIndex, False, longestDurationSoFar, startPriceW1, endPriceW1, startPriceWA), 0)]
             
-            if self.partialSequence:
-                result += [(action, self.makeNextState(self.WAVE_1, self.startIndex, True, longestDurationSoFar, startPriceW1, endPriceW1, startPriceWA), 1)]
-                result += [(action, self.makeNextState(self.WAVE_1, self.startIndex, False, longestDurationSoFar, startPriceW1, endPriceW1, startPriceWA), 1)]
+            if self.openStart:
+                result += [(action, self.makeNextState(self.WAVE_1, self.startIndex, True, longestDurationSoFar, startPriceW1, endPriceW1, startPriceWA), 0)]
+                result += [(action, self.makeNextState(self.WAVE_1, self.startIndex, False, longestDurationSoFar, startPriceW1, endPriceW1, startPriceWA), 0)]
 
-                result += [(action, self.makeNextState(self.WAVE_2, self.startIndex, True, longestDurationSoFar, startPriceW1, endPriceW1, startPriceWA), 2)]
-                result += [(action, self.makeNextState(self.WAVE_2, self.startIndex, False, longestDurationSoFar, startPriceW1, endPriceW1, startPriceWA), 2)]
+                result += [(action, self.makeNextState(self.WAVE_2, self.startIndex, True, longestDurationSoFar, startPriceW1, endPriceW1, startPriceWA), 0)]
+                result += [(action, self.makeNextState(self.WAVE_2, self.startIndex, False, longestDurationSoFar, startPriceW1, endPriceW1, startPriceWA), 0)]
 
-                result += [(action, self.makeNextState(self.WAVE_3, self.startIndex, True, longestDurationSoFar, startPriceW1, endPriceW1, startPriceWA), 3)]
-                result += [(action, self.makeNextState(self.WAVE_3, self.startIndex, False, longestDurationSoFar, startPriceW1, endPriceW1, startPriceWA), 3)]
+                result += [(action, self.makeNextState(self.WAVE_3, self.startIndex, True, longestDurationSoFar, startPriceW1, endPriceW1, startPriceWA), 0)]
+                result += [(action, self.makeNextState(self.WAVE_3, self.startIndex, False, longestDurationSoFar, startPriceW1, endPriceW1, startPriceWA), 0)]
 
-                result += [(action, self.makeNextState(self.WAVE_4, self.startIndex, True, longestDurationSoFar, startPriceW1, endPriceW1, startPriceWA), 4)]
-                result += [(action, self.makeNextState(self.WAVE_4, self.startIndex, False, longestDurationSoFar, startPriceW1, endPriceW1, startPriceWA), 4)]
+                result += [(action, self.makeNextState(self.WAVE_4, self.startIndex, True, longestDurationSoFar, startPriceW1, endPriceW1, startPriceWA), 0)]
+                result += [(action, self.makeNextState(self.WAVE_4, self.startIndex, False, longestDurationSoFar, startPriceW1, endPriceW1, startPriceWA), 0)]
 
-                result += [(action, self.makeNextState(self.WAVE_5, self.startIndex, True, longestDurationSoFar, startPriceW1, endPriceW1, startPriceWA), 5)]
-                result += [(action, self.makeNextState(self.WAVE_5, self.startIndex, False, longestDurationSoFar, startPriceW1, endPriceW1, startPriceWA), 5)]
+                result += [(action, self.makeNextState(self.WAVE_5, self.startIndex, True, longestDurationSoFar, startPriceW1, endPriceW1, startPriceWA), 0)]
+                result += [(action, self.makeNextState(self.WAVE_5, self.startIndex, False, longestDurationSoFar, startPriceW1, endPriceW1, startPriceWA), 0)]
 
-                result += [(action, self.makeNextState(self.WAVE_A, self.startIndex, True, longestDurationSoFar, startPriceW1, endPriceW1, startPriceWA), 6)]
-                result += [(action, self.makeNextState(self.WAVE_A, self.startIndex, False, longestDurationSoFar, startPriceW1, endPriceW1, startPriceWA), 6)]
+                result += [(action, self.makeNextState(self.WAVE_A, self.startIndex, True, longestDurationSoFar, startPriceW1, endPriceW1, startPriceWA), 0)]
+                result += [(action, self.makeNextState(self.WAVE_A, self.startIndex, False, longestDurationSoFar, startPriceW1, endPriceW1, startPriceWA), 0)]
 
-                result += [(action, self.makeNextState(self.WAVE_B, self.startIndex, True, longestDurationSoFar, startPriceW1, endPriceW1, startPriceWA), 7)]
-                result += [(action, self.makeNextState(self.WAVE_B, self.startIndex, False, longestDurationSoFar, startPriceW1, endPriceW1, startPriceWA), 7)]
+                result += [(action, self.makeNextState(self.WAVE_B, self.startIndex, True, longestDurationSoFar, startPriceW1, endPriceW1, startPriceWA), 0)]
+                result += [(action, self.makeNextState(self.WAVE_B, self.startIndex, False, longestDurationSoFar, startPriceW1, endPriceW1, startPriceWA), 0)]
 
-                result += [(action, self.makeNextState(self.WAVE_C, self.startIndex, True, longestDurationSoFar, startPriceW1, endPriceW1, startPriceWA), 8)]
-                result += [(action, self.makeNextState(self.WAVE_C, self.startIndex, False, longestDurationSoFar, startPriceW1, endPriceW1, startPriceWA), 8)]
+                result += [(action, self.makeNextState(self.WAVE_C, self.startIndex, True, longestDurationSoFar, startPriceW1, endPriceW1, startPriceWA), 0)]
+                result += [(action, self.makeNextState(self.WAVE_C, self.startIndex, False, longestDurationSoFar, startPriceW1, endPriceW1, startPriceWA), 0)]
 
         if currentWaveType == self.WAVE_0:
             # Let's find wave 1
@@ -114,7 +115,7 @@ class ElliottWaveProblem(algorithm.SearchProblem):
                 endPriceW2, endIndex = self.getMin(endIndex, self.step) if isPositiveTrend else self.getMax(endIndex, self.step)
                 if (startPriceW2 >= endPriceW2) != isPositiveTrend:
                     # trend check
-                    break
+                    continue
                 
                 if startPriceW1 != None:
                     if (startPriceW1 < endPriceW2) != isPositiveTrend:
@@ -140,7 +141,7 @@ class ElliottWaveProblem(algorithm.SearchProblem):
                     continue
 
                 if (startPriceW3 <= endPriceW3) != isPositiveTrend:
-                    break
+                    continue
                 
                 newState = self.makeNextState(self.WAVE_3, endIndex, isPositiveTrend, endIndex - currentWaveEndIndex, startPriceW1, endPriceW1, startPriceWA)
                 action, cost = self.getActionAndCost(self.WAVE_3, currentWaveEndIndex, endIndex)
@@ -158,7 +159,7 @@ class ElliottWaveProblem(algorithm.SearchProblem):
                     continue
 
                 if (endPriceW1 < endPriceW4) != isPositiveTrend:
-                    break
+                    continue
                 
                 newState = self.makeNextState(self.WAVE_4, endIndex, isPositiveTrend, longestDurationSoFar, startPriceW1, endPriceW1, startPriceWA)
                 action, cost = self.getActionAndCost(self.WAVE_4, currentWaveEndIndex, endIndex)
@@ -173,7 +174,7 @@ class ElliottWaveProblem(algorithm.SearchProblem):
                 endPriceW5, endIndex = self.getMax(endIndex, self.step) if isPositiveTrend else self.getMin(endIndex, self.step)
                 
                 if (startPriceW5 <= endPriceW5) != isPositiveTrend:
-                    break
+                    continue
                 
                 newState = self.makeNextState(self.WAVE_5, endIndex, isPositiveTrend, longestDurationSoFar, startPriceW1, endPriceW1, startPriceWA)
                 action, cost = self.getActionAndCost(self.WAVE_5, currentWaveEndIndex, endIndex)
@@ -188,7 +189,7 @@ class ElliottWaveProblem(algorithm.SearchProblem):
                 endPriceWA, endIndex = self.getMin(endIndex, self.step) if isPositiveTrend else self.getMax(endIndex, self.step)
 
                 if (startPriceWA >= endPriceWA) != isPositiveTrend:
-                    break
+                    continue
 
                 newState = self.makeNextState(self.WAVE_A, endIndex, isPositiveTrend, longestDurationSoFar, startPriceW1, endPriceW1, startPriceWA)
                 action, cost = self.getActionAndCost(self.WAVE_A, currentWaveEndIndex, endIndex)
@@ -203,7 +204,7 @@ class ElliottWaveProblem(algorithm.SearchProblem):
                 endPriceWB, endIndex = self.getMax(endIndex, self.step) if isPositiveTrend else self.getMin(endIndex, self.step)
                 
                 if (startPriceWB <= endPriceWB) != isPositiveTrend:
-                    break
+                    continue
 
                 newState = self.makeNextState(self.WAVE_B, endIndex, isPositiveTrend, longestDurationSoFar, startPriceW1, endPriceW1, startPriceWA)
                 action, cost = self.getActionAndCost(self.WAVE_B, currentWaveEndIndex, endIndex)
@@ -241,7 +242,7 @@ stocks = [
     5, 3                      # C
 ]
 
-problem = ElliottWaveProblem(0, len(stocks), lambda x:stocks[x], step=1, partialSequence=False)
+problem = ElliottWaveProblem(0, len(stocks), lambda x:stocks[x], step=1, openStart=False, openEnd=False)
 ucs = algorithm.UniformCostSearch()
 ucs.solve(problem)
 
