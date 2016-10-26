@@ -56,12 +56,17 @@ class ElliottWaveProblem(algorithm.SearchProblem):
     
     def makeNextState(self, waveType, endIndex, isPositiveTrend, longestDurationSoFar, startPriceW1, endPriceW1, startPriceWA):
         return (waveType, endIndex, isPositiveTrend, longestDurationSoFar, startPriceW1, endPriceW1, startPriceWA)
+
+    def nextEarliestEndIndex(self, currentWaveEndIndex):
+        return min(int(currentWaveEndIndex + max(self.step * 0.1, 1)), self.endIndex - 1)
     
     def succAndCost(self, state):
         currentWaveType, currentWaveEndIndex, isPositiveTrend, longestDurationSoFar, startPriceW1, endPriceW1, startPriceWA = state
         result = []
-        
-        if currentWaveType == None:
+        if currentWaveEndIndex == self.endIndex:
+            # No successor.
+            return []
+        elif currentWaveType == None:
             # When partial sequence is allowed, the first wave can be anything
             action = (self.WAVE_0, self.startIndex)
             result += [(action, self.makeNextState(self.WAVE_0, self.startIndex, True, longestDurationSoFar, startPriceW1, endPriceW1, startPriceWA), 0)]
@@ -92,11 +97,11 @@ class ElliottWaveProblem(algorithm.SearchProblem):
                 result += [(action, self.makeNextState(self.WAVE_C, self.startIndex, True, longestDurationSoFar, startPriceW1, endPriceW1, startPriceWA), 0)]
                 result += [(action, self.makeNextState(self.WAVE_C, self.startIndex, False, longestDurationSoFar, startPriceW1, endPriceW1, startPriceWA), 0)]
 
-        if currentWaveType == self.WAVE_0:
+        elif currentWaveType == self.WAVE_0:
             # Let's find wave 1
             #
             startPriceW1 = self.stockForDateIndex(self.startIndex)
-            for endIndex in range(currentWaveEndIndex + 1, self.endIndex, self.step):
+            for endIndex in range(self.nextEarliestEndIndex(currentWaveEndIndex), self.endIndex, self.step):
                 endPriceW1, endIndex = self.getMax(endIndex, self.step) if isPositiveTrend else self.getMin(endIndex, self.step)
 
                 if (startPriceW1 <= endPriceW1) != isPositiveTrend:
@@ -111,7 +116,7 @@ class ElliottWaveProblem(algorithm.SearchProblem):
             #
             # At any point in wave 2, the price shall be in w1's territory
             startPriceW2 = self.stockForDateIndex(currentWaveEndIndex)
-            for endIndex in range(currentWaveEndIndex + 1, self.endIndex, self.step):
+            for endIndex in range(self.nextEarliestEndIndex(currentWaveEndIndex), self.endIndex, self.step):
                 endPriceW2, endIndex = self.getMin(endIndex, self.step) if isPositiveTrend else self.getMax(endIndex, self.step)
                 if (startPriceW2 >= endPriceW2) != isPositiveTrend:
                     # trend check
@@ -134,7 +139,7 @@ class ElliottWaveProblem(algorithm.SearchProblem):
             # It must be longer than W1 and W2.
             #
             startPriceW3 = self.stockForDateIndex(currentWaveEndIndex)
-            for endIndex in range(currentWaveEndIndex + 1, self.endIndex, self.step):
+            for endIndex in range(self.nextEarliestEndIndex(currentWaveEndIndex), self.endIndex, self.step):
                 endPriceW3, endIndex = self.getMax(endIndex, self.step) if isPositiveTrend else self.getMin(endIndex, self.step)
 
                 if endIndex - currentWaveEndIndex < longestDurationSoFar:
@@ -153,7 +158,7 @@ class ElliottWaveProblem(algorithm.SearchProblem):
             # It must not enter W1's territory.
             
             startPriceW4 = self.stockForDateIndex(currentWaveEndIndex)
-            for endIndex in range(currentWaveEndIndex + 1, self.endIndex, self.step):
+            for endIndex in range(self.nextEarliestEndIndex(currentWaveEndIndex), self.endIndex, self.step):
                 endPriceW4, endIndex = self.getMin(endIndex, self.step) if isPositiveTrend else self.getMax(endIndex, self.step)
                 if (startPriceW4 >= endPriceW4) != isPositiveTrend:
                     continue
@@ -170,7 +175,7 @@ class ElliottWaveProblem(algorithm.SearchProblem):
             #
             # It cannot be longer than the longest one so far
             startPriceW5 = self.stockForDateIndex(currentWaveEndIndex)
-            for endIndex in range(currentWaveEndIndex + 1, self.endIndex, self.step):
+            for endIndex in range(self.nextEarliestEndIndex(currentWaveEndIndex), self.endIndex, self.step):
                 endPriceW5, endIndex = self.getMax(endIndex, self.step) if isPositiveTrend else self.getMin(endIndex, self.step)
                 
                 if (startPriceW5 <= endPriceW5) != isPositiveTrend:
@@ -185,7 +190,7 @@ class ElliottWaveProblem(algorithm.SearchProblem):
             #
             # It cannot be longer than the longest one so far
             startPriceWA = self.stockForDateIndex(currentWaveEndIndex)
-            for endIndex in range(currentWaveEndIndex + 1, self.endIndex, self.step):
+            for endIndex in range(self.nextEarliestEndIndex(currentWaveEndIndex), self.endIndex, self.step):
                 endPriceWA, endIndex = self.getMin(endIndex, self.step) if isPositiveTrend else self.getMax(endIndex, self.step)
 
                 if (startPriceWA >= endPriceWA) != isPositiveTrend:
@@ -200,7 +205,7 @@ class ElliottWaveProblem(algorithm.SearchProblem):
             #
             # It cannot go beyond startPriceWA
             startPriceWB = self.stockForDateIndex(currentWaveEndIndex)
-            for endIndex in range(currentWaveEndIndex + 1, self.endIndex, self.step):
+            for endIndex in range(self.nextEarliestEndIndex(currentWaveEndIndex), self.endIndex, self.step):
                 endPriceWB, endIndex = self.getMax(endIndex, self.step) if isPositiveTrend else self.getMin(endIndex, self.step)
                 
                 if (startPriceWB <= endPriceWB) != isPositiveTrend:
@@ -216,7 +221,7 @@ class ElliottWaveProblem(algorithm.SearchProblem):
             startPriceWC = self.stockForDateIndex(currentWaveEndIndex)
             endPriceWC = startPriceWC
             looksGood = True
-            for endIndex in range(currentWaveEndIndex + 1, self.endIndex, self.step):
+            for endIndex in range(self.nextEarliestEndIndex(currentWaveEndIndex), self.endIndex, self.step):
                 endPriceWC, endIndex = self.getMin(endIndex, self.step) if isPositiveTrend else self.getMax(endIndex, self.step)
                 
                 if (startPriceWC >= endPriceWC) != isPositiveTrend:
@@ -249,5 +254,5 @@ ucs.solve(problem)
 lastEndIndex = 0
 for action in ucs.actions:
     waveType, segmentEndIndex = action
-    print waveType, segmentEndIndex
+#    print waveType, segmentEndIndex
 
