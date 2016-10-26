@@ -5,17 +5,25 @@ import algorithm
 import model
 import matplotlib.pyplot as plt
 
-aapl = {}
+def load(key):
+    dateToPrice = {}
+    with open('../data/%s.csv' % key, 'rb') as csvfile:
+        reader = csv.reader(csvfile)
+        for row in reader:
+            date = np.datetime64(row[0])
 
-def stockForDate(date):
-    ratio = 7.0
-    while not date in aapl:
+            ratio = 1.0
+            if key.startswith('aapl') and date < np.datetime64('2014-06-09'):
+                ratio = 7.0    # split
+            price = float(row[1]) / ratio
+
+            dateToPrice[date] = price
+    return dateToPrice
+
+def stockForDate(dateToPrice, date):
+    while not date in dateToPrice:
         date = date - np.timedelta64(1, 'D')
-
-    if date >= np.datetime64('2014-06-09'):
-        ratio = 1.0
-
-    return aapl[date] / ratio
+    return dateToPrice[date]
 
 def analyze(containingWaveType, startIndex, endIndex, dataEndIndex, step, openStart, openEnd, verbose = False):
     if verbose: print "Analyzing wave %s [%d, %d) with step %d" % (containingWaveType, startIndex, endIndex, step)
@@ -42,8 +50,6 @@ def analyze(containingWaveType, startIndex, endIndex, dataEndIndex, step, openSt
             if segmentEndIndex == dataEndIndex:
                 if verbose: print "It's the last wave in the data"
                 subWaveSequence = analyze(waveType, lastSegmentEndIndex, segmentEndIndex, dataEndIndex, newStep, openStart=False, openEnd=True, verbose=verbose)
-#            else:
-#                subWaveSequence = analyze(waveType, lastSegmentEndIndex, segmentEndIndex, dataEndIndex, newStep, openStart=False, openEnd=False)
 
         waveSequence += [(waveType, lastSegmentEndIndex, segmentEndIndex, step, subWaveSequence)]
         lastSegmentEndIndex = segmentEndIndex
@@ -69,40 +75,52 @@ def predictionError(waveSequence, futureDays):
             
             truth = stocks[endIndex + futureDays] if endIndex + futureDays < len(stocks) else -1
             return prediction - truth
-        
-#            print "Step: %d, Last Wave Type: %s, Prediction After %d days: %f, Truth: %f" % (step, waveType, futureDays, prediction, truth)
         else:
             return predictionError(subWaveSequence, futureDays)
+
+testData = [
+    ('dj', np.datetime64('2016-02-11'), np.datetime64('2016-06-27')),
+    ('aapl1', np.datetime64('2011-06-20'), np.datetime64('2012-09-17')),
+    ('aapl2', np.datetime64('2013-06-24'), np.datetime64('2016-05-09')),
+    ('gdx', np.datetime64('2006-10-02'), np.datetime64('2008-03-10')),
+    ('qcom', np.datetime64('2002-08-05'), np.datetime64('2006-05-01')),
+    ('rut', np.datetime64('2011-10-03'), np.datetime64('2016-02-08'))]
+
+for key, dataStartDate, dataEndDate in testData:
+    dateToPrice = load(key)
+
+    stocks = []
+    date = dataStartDate
+    while date < dataEndDate:
+        stocks += [stockForDate(dateToPrice, date)]
+        date += np.timedelta64(1, 'D')
+
+    analysisDuration = (dataEndDate - dataStartDate) / 3
         
-with open('aapl.csv', 'rb') as csvfile:
-    reader = csv.reader(csvfile)
-    for row in reader:
-        date = np.datetime64(row[0])
-        price = float(row[1])
-
-        aapl[date] = price
-
-dataStartDate = np.datetime64('1980-12-12')
-dataEndDate = np.datetime64('2016-10-14')
-        
-stocks = []
-date = dataStartDate
-while date < dataEndDate:
-    stocks += [stockForDate(date)]
-    date += np.timedelta64(1, 'D')
-
-analysisEndDate = np.datetime64('2010-01-01')
-
-predictionErrors = []
-while analysisEndDate < (dataEndDate - np.timedelta64(30, 'D')):
-    analysisStartDate = analysisEndDate - np.timedelta64(365 * 2, 'D')
-    analysisStartIndex = int((analysisStartDate - dataStartDate) / np.timedelta64(1,'D'))
-    analysisEndIndex = int((analysisEndDate - dataStartDate) / np.timedelta64(1,'D'))
+    analysisEndDate = dataStartDate + analysisDuration
     
-    waveSequence = analyze(None, analysisStartIndex, analysisEndIndex, analysisEndIndex, 90, openStart=True, openEnd=True, verbose=False)
-    predictionErrors.append(predictionError(waveSequence, 30))
-    analysisEndDate += np.timedelta64(30, 'D')
+    predictionErrors = []
+    while analysisEndDate < (dataEndDate - np.timedelta64(30, 'D')):
+        analysisStartDate = analysisEndDate - analysisDuration
+        analysisStartIndex = int((analysisStartDate - dataStartDate) / np.timedelta64(1,'D'))
+        analysisEndIndex = int((analysisEndDate - dataStartDate) / np.timedelta64(1,'D'))
     
+        waveSequence = analyze(None, analysisStartIndex, analysisEndIndex, analysisEndIndex, 90, openStart=True, openEnd=True, verbose=False)
+        predictionErrors.append(predictionError(waveSequence, 30))
+        analysisEndDate += np.timedelta64(7, 'D')
+    
+    print key, sum(map(lambda x:x ** 2, predictionErrors)) / len(predictionErrors)
+
+
+
+
+
+
+
+
+
+
+
     # fig = plt.figure(figsize=(9, 6))
     # ax = fig.add_subplot(111)
     # ax.plot(range(analysisStartIndex, analysisEndIndex), stocks[analysisStartIndex:analysisEndIndex])
@@ -136,6 +154,3 @@ while analysisEndDate < (dataEndDate - np.timedelta64(30, 'D')):
 #     prevEndIndex = endIndex
 
 #print "MSS: ", meanSquaredSum
-
-print sum(map(lambda x:x ** 2, predictionErrors)) / len(predictionErrors)
-

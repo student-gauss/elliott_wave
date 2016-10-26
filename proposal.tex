@@ -23,16 +23,14 @@ Collaborators: & Shiva Sundar
 \subsection{Elliott Wave Principle}
 
 Elliott Wave Principle (EWP) is a hypothesis that stock market price
-can be modeled as a sequence of waves which shape follow some defined
-rules.
-
-By determining the wave shape of the day, EWP suggests we can predict
-the future market price more accurately than a random chance.
+can be modeled as a sequence of waves which shapes follow some defined
+rules. EWP suggests we can predict the future market price more
+accurately than a random chance by determining the wave shape.
 
 \subsection{Input and output behavior}
 
 Given a history of a stock market, the system outputs the predicted
-price change 30 days later.
+price change 30 days later. For example:
 
 \begin{description}
 \item[Input] AAPL stock data (Dec 12, 1980 - Oct 22, 2016), obtained from \url{https://finance.yahoo.com/quote/AAPL/history?p=AAPL}
@@ -43,37 +41,54 @@ price change 30 days later.
 
 Taking a history of some stock price, the evaluation process runs the
 system against some past subrange of the period and compares the
-output to the actual price.
+output to the actual price. We use the mean squared error as the
+evaluation metric.
       
 \section{Baseline and Oracle}
 
 \subsection{Baseline}
 
 The baseline approach uses Dynamic Programming to find the wave
-structure with simlified Elliott Wave rules. Then, based on the wave
-of today, it predicts the price after 30 days.
-
-Here is the simplified rules.
+structure with simlified Elliott Wave rules below. Then, based on the
+wave of today, it predicts the price after 30 days.
 
 \begin{enumerate}
  \item There are five impulse waves (1, 2, 3, 4, and 5), followed by
    three corrective waves (A, B, and C).
+ \item The input data (stock history) is a substring of the five waves.
+ \item Each wave may have nested waves. Except the wave which ends at the end of the input data, these substructure must have all eight waves.
  \item Wave 2 never retraces more than 100\% of Wave 1.
  \item Wave 3 is longer than Wave 1 and 2. 
  \item Wave 4 does not enter into the same price territory as Wave 1.
 \end{enumerate}
 
-[TODO] 
+Running the baseline implementation against some stocks, we got the following baseline.
+
+\begin{tabular}{cccr}
+DJ & 2016-02-11 & 2016-06-27 & 446721.6  \\
+AAPL & 2011-06-20 & 2012-09-17 & 410.8 \\
+AAPL & 2013-06-24 & 2016-05-09 & 1110.9 \\
+QDX  & 2006-10-02 & 2008-03-10 & 193.7 \\
+RUT  & 2011-10-03 & 2016-02-08 & 51167.3 \\
+\end{tabular}
 
 \subsection{Oracle}
 
 The oracle approach asks an expert opinion (Shiva Sunder) to label the
-wave structure of the full history. Then, for each day in the history,
-it calculates the mean squared error between the wave and the actual
-price. It gives the accuracy of prediction given Elliott wave
-classification is correct.
+wave structure. Then, for each day in the history, it calculates the
+mean squared error between the wave and the actual price. It gives the
+accuracy of prediction given Elliott wave classification is perfectly
+correct.
 
-[TODO] 
+Oracle produced these values.
+
+\begin{tabular}{cccr}
+DJ \footnote{This is worse than baseline because the expert opinion doesn't have substructure. We need to correct this.} & 2016-02-11 & 2016-06-27 & 867453.8  \\
+AAPL & 2011-06-20 & 2012-09-17 & 58.0 \\ 
+AAPL & 2013-06-24 & 2016-05-09 & 358.5 \\
+QDX  & 2006-10-02 & 2008-03-10 & 28.3 \\
+RUT  & 2011-10-03 & 2016-02-08 & 26372.9 \\
+\end{tabular}
 
 \section{Challenges and Topics}
 
@@ -81,9 +96,9 @@ classification is correct.
 \item Incorporate more Elliott rules into the dynamic programming and
   see if it increases the accuracy.
 \item Define some mathematical curve of X nested level Elliott
-  wave. Use linear regression to find the parameter to fit.p
+  wave. Use linear regression to find the parameter to fit.
 \item EWP is an old theory and can be out dated in the current stock
-  behavior. We try Reenforcement Learning to find the new rule
+  behavior. We can try Reenforcement Learning to find the new rule
   (policy).
 \end{itemize}
 
