@@ -14,7 +14,7 @@
 \begin{tabular}{rl}
 SUNet ID: & motonari \\
 Name: & Motonari ITO \\
-Collaborators: & Shiva Sundar
+Collaborators: & Sundararaman Shiva
 \end{tabular}
 \end{center}
 
@@ -25,12 +25,12 @@ Collaborators: & Shiva Sundar
 Elliott Wave Principle (EWP) is a hypothesis that stock market price
 can be modeled as a sequence of waves which shapes follow some defined
 rules. EWP suggests we can predict the future market price more
-accurately than a random chance by determining the wave shape.
+accurately than a random chance by recognizing the wave pattern.
 
 \subsection{Input and output behavior}
 
-Given a history of a stock market, the system outputs the predicted
-price change 30 days later. For example:
+Given a history of a stock market, the system outputs a predicted
+price 30 days later. For example:
 
 \begin{description}
 \item[Input] AAPL stock data (Dec 12, 1980 - Oct 22, 2016), obtained from \url{https://finance.yahoo.com/quote/AAPL/history?p=AAPL}
@@ -48,7 +48,7 @@ evaluation metric.
 
 \subsection{Baseline}
 
-The baseline approach uses Dynamic Programming to find the wave
+The baseline approach uses Uniform Cost Search to find the wave
 structure with simlified Elliott Wave rules below. Then, based on the
 wave of today, it predicts the price after 30 days.
 
@@ -65,11 +65,12 @@ wave of today, it predicts the price after 30 days.
 Running the baseline implementation against some stocks, we got the following baseline.
 
 \begin{tabular}{cccr}
-DJI & 2016-02-11 & 2016-06-27 & 446721.6  \\
-AAPL & 2011-06-20 & 2012-09-17 & 410.8 \\
-AAPL & 2013-06-24 & 2016-05-09 & 1110.9 \\
-QDX  & 2006-10-02 & 2008-03-10 & 193.7 \\
-RUT  & 2011-10-03 & 2016-02-08 & 51167.3 \\
+  Stock & Start Date & End Date & MSE \\
+  \hline
+  AAPL & 2011-06-20 & 2012-09-17 & 410.8 \\
+  AAPL & 2013-06-24 & 2016-05-09 & 1110.9 \\
+  QDX  & 2006-10-02 & 2008-03-10 & 193.7 \\
+  RUT  & 2011-10-03 & 2016-02-08 & 51167.3 \\
 \end{tabular}
 
 \subsection{Oracle}
@@ -83,22 +84,22 @@ correct.
 Oracle produced these values.
 
 \begin{tabular}{cccr}
-DJI \footnote{This is worse than baseline because the expert opinion doesn't have substructure. We need to correct this.} & 2016-02-11 & 2016-06-27 & 867453.8  \\
-AAPL & 2011-06-20 & 2012-09-17 & 58.0 \\ 
-AAPL & 2013-06-24 & 2016-05-09 & 358.5 \\
-QDX  & 2006-10-02 & 2008-03-10 & 28.3 \\
+  Stock & Start Date & End Date & MSE \\
+  \hline
+  AAPL & 2011-06-20 & 2012-09-17 & 58.0 \\ 
+  AAPL & 2013-06-24 & 2016-05-09 & 358.5 \\
+  QDX  & 2006-10-02 & 2008-03-10 & 28.3 \\
 RUT  & 2011-10-03 & 2016-02-08 & 26372.9 \\
 \end{tabular}
 
 \section{Challenges and Topics}
 
 \begin{itemize}
-\item Incorporate more Elliott rules into the dynamic programming and
-  see if it increases the accuracy.
+\item Incorporate more complex Elliott rules into the search problem.
 \item Define some mathematical curve of X nested level Elliott
   wave. Use linear regression to find the parameter to fit.
 \item EWP is an old theory and can be out dated in the current stock
-  behavior. We can try Reenforcement Learning to find the new rule
+  behavior. Reenforcement Learning may be able to find the new rule
   (policy).
 \end{itemize}
 
