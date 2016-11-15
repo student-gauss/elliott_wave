@@ -4,51 +4,54 @@ import numpy as np
 import collections
 import random
 
-forcastDuration = 30
-eta = 0.1
+Eta = 0.1
+Gamma = 1.0
+LookBack = [87, 54, 33, 21, 13, 8, 5, 3, 2, 1]
+LookAhead = [1, 7, 14, 30]
+Data = [
+    ('dj', None, None),
+    ('gdx', None, None),
+    ('qcom', None, None),
+    ('rut', None, None),
+    ('wmt', None, None),
+    ('hd', None, None),
+    ('low', None, None),
+    ('tgt', None, None),
+    ('cost', None, None),
+    ('nke', None, None),
+    ('ko', None, None),
+    ('xom', None, None),
+    ('cvx', None, None),
+    ('cop', None, None),
+    ('bp', None, None),
+    ('ibm', None, None),
+    ('aapl', None, None),
+]
 
 def load(key):
     dateToPrice = {}
+    startDate = None
+    endDate = None
     with open('../data/%s.csv' % key, 'rb') as csvfile:
         reader = csv.reader(csvfile)
         for row in reader:
             date = np.datetime64(row[0])
+            if endDate == None:
+                endDate = date
+            startDate = date
             price = float(row[6])
             dateToPrice[date] = price
-    return dateToPrice
+    return (dateToPrice, startDate, endDate)
 
 def stockForDate(dateToPrice, date):
     while not date in dateToPrice:
         date = date - np.timedelta64(1, 'D')
     return dateToPrice[date]
 
-X = [87, 54, 33, 21, 13, 8, 5, 3, 2, 1]
-
-learnData = [
-   ('dj', np.datetime64('2016-02-11'), np.datetime64('2016-06-27')),
-   ('dj', np.datetime64('1985-01-29'), np.datetime64('2015-11-11')),
-   ('gdx', np.datetime64('2006-10-02'), np.datetime64('2008-03-10')),
-   ('qcom', np.datetime64('2002-08-05'), np.datetime64('2006-05-01')),
-   ('rut', np.datetime64('2011-10-03'), np.datetime64('2016-02-08')),
-   ('wmt', np.datetime64('2011-11-14'), np.datetime64('2016-11-11')),
-   ('hd', np.datetime64('2011-11-14'), np.datetime64('2016-11-11')),
-   ('low', np.datetime64('2011-11-14'), np.datetime64('2016-11-11')),
-   ('tgt', np.datetime64('1980-03-17'), np.datetime64('2016-11-11')),
-   ('cost', np.datetime64('1986-07-09'), np.datetime64('2016-11-11')),
-   ('nke', np.datetime64('1980-12-02'), np.datetime64('2016-11-11')),
-   ('ko', np.datetime64('1962-01-02'), np.datetime64('2016-11-11')),
-   ('xom', np.datetime64('1970-01-02'), np.datetime64('2016-11-11')),
-   ('cvx', np.datetime64('1970-01-02'), np.datetime64('2016-11-11')),
-   ('cop', np.datetime64('1981-12-31'), np.datetime64('2016-11-11')),
-    ('bp', np.datetime64('1977-01-03'), np.datetime64('2016-11-11')),
-#    ('ibm', np.datetime64('1962-01-02'), np.datetime64('2015-05-02')),
-#    ('aapl', np.datetime64('1980-12-12'), np.datetime64('2015-05-02')),
-]
-
 learnCount = collections.defaultdict(int)
 def getState(stocks, index):
     state = []
-    for xi in range(1, len(X)):
+    for xi in range(1, len(LookBack)):
         prev = stocks[0]
         cur = stocks[1]
         if index - X[xi - 1] > 0 and index - X[xi] > 0:
@@ -59,98 +62,46 @@ def getState(stocks, index):
 
     return tuple(state)
 
+def actions(s):
+    return [(t, d) for t in [1, -1] for d in LookAhead]
+
 def learn(stocks, Q):
-    if len(stocks) < forcastDuration:
-        print "Ignore this"
-        return
-    
-    for index in range(len(stocks) - forcastDuration):
-        s = getState(stocks, index)
-        for a in [1, -1]:
-            r = (stocks[index + forcastDuration] - stocks[index]) * a
+    for index in range(len(stocks) - max(LookAhead)):
+        state = getState(stocks, index)
+        for action in actions(state):
+            predict, forcastDuration = action
+            r = (stocks[index + forcastDuration] - stocks[index]) * predict
             s_prime = getState(stocks, index + forcastDuration)
-            sa = (s, a)
-            
-            Vopt = max([Q[s_prime, a_prime] for a_prime in [1, -1]])
-            
-            Q[(s, a)] = (1 - eta) * Q[(s, a)] + eta * (r + Vopt)
-            learnCount[(s, a)] += 1
 
-Q = collections.defaultdict(int)
-
-for key, dataStartDate, dataEndDate in learnData:
-    dateToPrice = load(key)
-
-    stocks = []
-    date = dataStartDate
-    while date < dataEndDate:
-        stocks += [stockForDate(dateToPrice, date)]
-        date += np.timedelta64(1, 'D')
-
-    learn(stocks, Q)
-
-testData = [
-    ('aapl', np.datetime64('2015-05-02'), np.datetime64('2016-11-11'))]
-
-print "Size of Q ", len(Q)
-print "Size of features ", len(X)
+            Vopt = max([Q[s_prime, a_prime] for a_prime in actions(s_prime)])
+            Q[(state, action)] = (1 - eta) * Q[(state, action)] + eta * (r + Vopt)
+            learnCount[(state, action)] += 1
 
 def test(stocks, Q):
-    if len(stocks) < forcastDuration:
-        print "Ignore this"
-        return
-
+    reward = 0.0
     total = 0.0
     win = 0.0
     unknown = 0
-    for index in range(len(stocks) - forcastDuration):
+    index = 0
+    while index < len(stocks) - max(LookAhead):
         s = getState(stocks, index)
-        if (s, 1) in Q and (s, -1) in Q:
-            total += 1
-            positiveAction = Q[(s, +1)]
-            negativeAction = Q[(s, -1)]
-
-            r = stocks[index + forcastDuration] - stocks[index]
-            if positiveAction < negativeAction and r < 0:
-                # Stock should go negative
-                win += 1
-            elif positiveAction >= negativeAction and r >= 0:
-                win += 1
-        else:
-            unknown += 1
-    print "Accuracy: ",win / total
-    print "Unknown SA: ", unknown
-    print "Total SA: ", total
-    
-for key, dataStartDate, dataEndDate in testData:
-    dateToPrice = load(key)
-
+        _, action = max([(Q[(s, a)], a) for a in actions(s)])
+        trade, duration = action
+        reward += (stocks[index + duration] - stocks[index]) * trade
+        index += duration
+    return reward
+        
+for key, dataStartDate, dataEndDate in Data:
+    Q = collections.defaultdict(int)
+    dateToPrice, startDate, endDate = load(key)
     stocks = []
-    date = dataStartDate
-    while date < dataEndDate:
+    date = startDate
+    while date < endDate:
         stocks += [stockForDate(dateToPrice, date)]
         date += np.timedelta64(1, 'D')
-
-    test(stocks, Q)
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+    stocksToLearn = stocks[0:-365]
+    stocksToTest = stocks[-365:]
+    
+    learn(stocksToLearn, Q)
+    reward = test(stocksToTest, Q)
+    print reward
