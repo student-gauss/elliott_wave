@@ -30,22 +30,22 @@ def stockForDate(dateToPrice, date):
 X = [87, 54, 33, 21, 13, 8, 5, 3, 2, 1]
 
 learnData = [
-#    ('dj', np.datetime64('2016-02-11'), np.datetime64('2016-06-27')),
-    ('dj', np.datetime64('1985-01-29'), np.datetime64('2015-11-11')),
-#    ('gdx', np.datetime64('2006-10-02'), np.datetime64('2008-03-10')),
-#    ('qcom', np.datetime64('2002-08-05'), np.datetime64('2006-05-01')),
-#    ('rut', np.datetime64('2011-10-03'), np.datetime64('2016-02-08')),
-#    ('wmt', np.datetime64('2011-11-14'), np.datetime64('2016-11-11')),
-#    ('hd', np.datetime64('2011-11-14'), np.datetime64('2016-11-11')),
-#    ('low', np.datetime64('2011-11-14'), np.datetime64('2016-11-11')),
-#    ('tgt', np.datetime64('1980-03-17'), np.datetime64('2016-11-11')),
-#    ('cost', np.datetime64('1986-07-09'), np.datetime64('2016-11-11')),
-#    ('nke', np.datetime64('1980-12-02'), np.datetime64('2016-11-11')),
-#    ('ko', np.datetime64('1962-01-02'), np.datetime64('2016-11-11')),
-#    ('xom', np.datetime64('1970-01-02'), np.datetime64('2016-11-11')),
-#    ('cvx', np.datetime64('1970-01-02'), np.datetime64('2016-11-11')),
-#    ('cop', np.datetime64('1981-12-31'), np.datetime64('2016-11-11')),
-#    ('bp', np.datetime64('1977-01-03'), np.datetime64('2016-11-11')),
+   ('dj', np.datetime64('2016-02-11'), np.datetime64('2016-06-27')),
+   ('dj', np.datetime64('1985-01-29'), np.datetime64('2015-11-11')),
+   ('gdx', np.datetime64('2006-10-02'), np.datetime64('2008-03-10')),
+   ('qcom', np.datetime64('2002-08-05'), np.datetime64('2006-05-01')),
+   ('rut', np.datetime64('2011-10-03'), np.datetime64('2016-02-08')),
+   ('wmt', np.datetime64('2011-11-14'), np.datetime64('2016-11-11')),
+   ('hd', np.datetime64('2011-11-14'), np.datetime64('2016-11-11')),
+   ('low', np.datetime64('2011-11-14'), np.datetime64('2016-11-11')),
+   ('tgt', np.datetime64('1980-03-17'), np.datetime64('2016-11-11')),
+   ('cost', np.datetime64('1986-07-09'), np.datetime64('2016-11-11')),
+   ('nke', np.datetime64('1980-12-02'), np.datetime64('2016-11-11')),
+   ('ko', np.datetime64('1962-01-02'), np.datetime64('2016-11-11')),
+   ('xom', np.datetime64('1970-01-02'), np.datetime64('2016-11-11')),
+   ('cvx', np.datetime64('1970-01-02'), np.datetime64('2016-11-11')),
+   ('cop', np.datetime64('1981-12-31'), np.datetime64('2016-11-11')),
+    ('bp', np.datetime64('1977-01-03'), np.datetime64('2016-11-11')),
 #    ('ibm', np.datetime64('1962-01-02'), np.datetime64('2015-05-02')),
 #    ('aapl', np.datetime64('1980-12-12'), np.datetime64('2015-05-02')),
 ]
@@ -94,7 +94,7 @@ for key, dataStartDate, dataEndDate in learnData:
     learn(stocks, Q)
 
 testData = [
-    ('dj', np.datetime64('2015-11-11'), np.datetime64('2016-11-11'))]
+    ('aapl', np.datetime64('2015-05-02'), np.datetime64('2016-11-11'))]
 
 print "Size of Q ", len(Q)
 print "Size of features ", len(X)
