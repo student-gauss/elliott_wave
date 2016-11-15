@@ -45,7 +45,7 @@ learnData = [
 #    ('aapl', np.datetime64('1980-12-12'), np.datetime64('2015-05-02')),
 ]
 
-
+learnCount = collections.defaultdict(int)
 def getState(stocks, index):
     state = []
     for xi in range(1, len(X)):
@@ -60,20 +60,21 @@ def getState(stocks, index):
     return tuple(state)
 
 def learn(stocks, Q):
-    if len(stocks) < forcastDuration * 2:
+    if len(stocks) < forcastDuration:
         print "Ignore this"
         return
     
-    for index in range(len(stocks) - forcastDuration * 2):
+    for index in range(len(stocks) - forcastDuration):
         s = getState(stocks, index)
         for a in [1, -1]:
             r = (stocks[index + forcastDuration] - stocks[index]) * a
             s_prime = getState(stocks, index + forcastDuration)
-            a_prime = random.choice([+1, -1])
-            
             sa = (s, a)
             
-            Q[(s, a)] = (1 - eta) * Q[(s, a)] + eta * (r + Q[(s_prime, a_prime)])
+            Vopt = max([Q[s_prime, a_prime] for a_prime in [1, -1]])
+            
+            Q[(s, a)] = (1 - eta) * Q[(s, a)] + eta * (r + Vopt)
+            learnCount[(s, a)] += 1
 
 Q = collections.defaultdict(int)
 
@@ -131,4 +132,25 @@ for key, dataStartDate, dataEndDate in testData:
         date += np.timedelta64(1, 'D')
 
     test(stocks, Q)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
