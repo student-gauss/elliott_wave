@@ -1,0 +1,48 @@
+\documentclass[12pt]{article}
+\usepackage{fullpage,enumitem,amsmath,amssymb,graphicx,bm,listings,algpseudocode,hyperref}
+\newcommand{\vect}[1]{\boldsymbol{#1}}
+
+\lstdefinestyle{custom}{
+  basicstyle=\footnotesize\ttfamily,
+  language=Python,
+}
+\begin{document}
+
+\begin{center}
+{\Large CS221 Fall 2016 Project [p-proposal]}
+
+\begin{tabular}{rl}
+SUNet ID: & motonari \\
+Name: & Motonari ITO \\
+Collaborators: & Sundararaman Shiva
+\end{tabular}
+\end{center}
+
+\section{Scope}
+
+Elliott Wave Principle (EWP) is a hypothesis that stock market price
+can be modeled as a sequence of waves which shapes follow some defined
+rules. EWP suggests we can predict the future market price more
+accurately than a random chance by recognizing the wave pattern.
+
+This is distinct from other stock price prediction method in that it
+relies sololy on the historical price changes and doesn't use external
+information such as market sentiment or industrial news. While we
+could improve the prediction by using those methods complementary, for
+this project, we focus on EWP approach.
+
+While EWP has several rules about wave shapes, we don't use them in
+the original form (except in the baseline algorithm explored in
+\verb|p-proposal|.) Instead, we use various AI algorithm to find a new
+set of rules which predict the price more accurately.
+
+\section{Model}
+
+We model a stock market as an MDP where we neither know the
+transitions nor reward functions. On a given day, we have prior stock
+price history. We buy a set of stocks where each will be sold after
+some days. T
+
+
+
+\end{document}

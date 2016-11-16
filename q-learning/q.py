@@ -7,7 +7,7 @@ import random
 Eta = 0.1
 Gamma = 0.9
 LookBack = [87, 54, 33, 21, 13, 8, 5, 3, 2, 1]
-LookAhead = [1, 7, 14, 30]
+Epsilon = 0.5
 Data = [
     ('dj', None, None),
     ('gdx', None, None),
@@ -48,51 +48,121 @@ def stockForDate(dateToPrice, date):
         date = date - np.timedelta64(1, 'D')
     return dateToPrice[date]
 
-learnCount = collections.defaultdict(int)
-def getState(stocks, index):
-    state = []
+
+def initState():
+    priorPattern = [-1] * (len(LookBack) - 1)
+    assets = []
+    return tuple([tuple(priorPattern), tuple(assets)])
+
+def advanceIndex(currentState, stocks, newIndex):
+    if newIndex == 0:
+        return currentState
+    
+    priorPattern = []
     for xi in range(1, len(LookBack)):
         prev = stocks[0]
         cur = stocks[1]
-        if index - LookBack[xi - 1] > 0 and index - LookBack[xi] > 0:
-            prev = stocks[index - LookBack[xi - 1]]
-            cur  = stocks[index - LookBack[xi]]
+        if newIndex - LookBack[xi - 1] > 0 and newIndex - LookBack[xi] > 0:
+            prev = stocks[newIndex - LookBack[xi - 1]]
+            cur  = stocks[newIndex - LookBack[xi]]
 
-            state += [+1 if prev < cur else -1]
+            priorPattern += [+1 if prev < cur else -1]
 
-    return tuple(state)
+    _, currentAssets = currentState
+    newAssets = []
+    for priceDiff, numStocks in currentAssets:
+        newPriceDiff = priceDiff + (stocks[newIndex] - stocks[newIndex - 1])
+        newAssets += [(newPriceDiff, numStocks)]
 
-def actions(s):
-    return [(t, d) for t in [1, -1] for d in LookAhead]
+    return tuple([tuple(priorPattern), tuple(newAssets)])
 
+def buyStock(currentState):
+    priorPattern, currentAssets = currentState
+    
+    newAssets = list(currentAssets)
+    newAssets += [(0, 1)]
+
+    return tuple([tuple(priorPattern), tuple(newAssets)])
+
+def sellStock(currentState, assetIndex):
+    priorPattern, currentAssets = currentState
+    
+    newAssets = list(currentAssets)
+    del newAssets[assetIndex]
+
+    return tuple([tuple(priorPattern), tuple(newAssets)])
+
+def getActions(state):
+    _, assets = state
+    
+    actions = []
+    actions += [-2]   # buy
+    actions += [-1]   # no action
+    actions += range(len(assets))  # sell
+    return actions
+
+learnCount = collections.defaultdict(int)
 def learn(stocks, Q):
-    for index in range(len(stocks) - max(LookAhead)):
-        state = getState(stocks, index)
-        for action in actions(state):
-            predict, forcastDuration = action
-            r = (stocks[index + forcastDuration] - stocks[index]) * predict
-            s_prime = getState(stocks, index + forcastDuration)
+    state = initState()
+    for index in range(len(stocks) - 1):
+        actions = getActions(state)
+        if random.random() < Epsilon:
+            # pick random 
+            action = random.choice(actions)
+        else:
+            # pick optimal action
+            _, action = max([(Q[(state, a)], a) for a in actions])
 
-            Vopt = max([Q[s_prime, a_prime] for a_prime in actions(s_prime)])
-            Q[(state, action)] = (1 - Eta) * Q[(state, action)] + Eta * (r + Vopt)
-            learnCount[(state, action)] += 1
+        if action == -2:
+            # Buy
+            r = -stocks[index]
+            s_prime = buyStock(state)
+        elif action == -1:
+            # No action
+            r = 0
+            s_prime = state
+        else:
+            # Sell
+            _, currentAssets = state
+            r = currentAssets[action][0]
+            s_prime = sellStock(state, action)
+
+        s_prime = advanceIndex(s_prime, stocks, index + 1)
+        Vopt = max([Q[(s_prime, a_prime)] for a_prime in getActions(s_prime)])
+        Q[(state, action)] = (1 - Eta) * Q[(state, action)] + Eta * (r + Vopt)
+        state = s_prime
+        
+        learnCount[(state, action)] += 1
 
 def test(stocks, Q):
-    reward = 0.0
-    total = 0.0
-    win = 0.0
-    unknown = 0
-    index = 0
-    while index < len(stocks) - max(LookAhead):
-        s = getState(stocks, index)
-        _, action = max([(Q[(s, a)], a) for a in actions(s)])
-        trade, duration = action
-        reward += (stocks[index + duration] - stocks[index]) * trade
-        index += duration
-    return reward
+    state = initState()
+    r = 0
+    for index in range(len(stocks) - 1):
+        actions = getActions(state)
+        # optimal action
+        q, action = min([(Q[(state, a)], a) for a in actions])
+        if action == -2:
+            # Buy
+            r += -stocks[index]
+            s_prime = buyStock(state)
+        elif action == -1:
+            # No action
+            r += 0
+            s_prime = state
+        else:
+            # Sell
+            _, currentAssets = state
+            r += currentAssets[action][0]
+            s_prime = sellStock(state, action)
+
+        s_prime = advanceIndex(s_prime, stocks, index + 1)
+        state = s_prime
+
+    return r
         
-Q = collections.defaultdict(int)
 for key, dataStartDate, dataEndDate in Data:
+    Q = collections.defaultdict(int)
+    
     dateToPrice, startDate, endDate = load(key)
     stocks = []
     date = startDate
