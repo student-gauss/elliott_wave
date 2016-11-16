@@ -5,7 +5,7 @@ import collections
 import random
 
 Eta = 0.1
-Gamma = 1.0
+Gamma = 0.9
 LookBack = [87, 54, 33, 21, 13, 8, 5, 3, 2, 1]
 LookAhead = [1, 7, 14, 30]
 Data = [
@@ -54,9 +54,9 @@ def getState(stocks, index):
     for xi in range(1, len(LookBack)):
         prev = stocks[0]
         cur = stocks[1]
-        if index - X[xi - 1] > 0 and index - X[xi] > 0:
-            prev = stocks[index - X[xi - 1]]
-            cur  = stocks[index - X[xi]]
+        if index - LookBack[xi - 1] > 0 and index - LookBack[xi] > 0:
+            prev = stocks[index - LookBack[xi - 1]]
+            cur  = stocks[index - LookBack[xi]]
 
             state += [+1 if prev < cur else -1]
 
@@ -74,7 +74,7 @@ def learn(stocks, Q):
             s_prime = getState(stocks, index + forcastDuration)
 
             Vopt = max([Q[s_prime, a_prime] for a_prime in actions(s_prime)])
-            Q[(state, action)] = (1 - eta) * Q[(state, action)] + eta * (r + Vopt)
+            Q[(state, action)] = (1 - Eta) * Q[(state, action)] + Eta * (r + Vopt)
             learnCount[(state, action)] += 1
 
 def test(stocks, Q):
@@ -91,8 +91,8 @@ def test(stocks, Q):
         index += duration
     return reward
         
+Q = collections.defaultdict(int)
 for key, dataStartDate, dataEndDate in Data:
-    Q = collections.defaultdict(int)
     dateToPrice, startDate, endDate = load(key)
     stocks = []
     date = startDate
