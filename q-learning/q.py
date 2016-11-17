@@ -3,6 +3,7 @@ import datetime
 import numpy as np
 import collections
 import random
+import itertools
 
 Eta = 0.1
 Gamma = 0.9
@@ -50,7 +51,7 @@ def stockForDate(dateToPrice, date):
 
 
 def initState():
-    priorPattern = [-1] * (len(LookBack) - 1)
+    priorPattern = [0] * (len(LookBack) - 1)
     assets = []
     return tuple([tuple(priorPattern), tuple(assets)])
 
@@ -66,7 +67,7 @@ def advanceIndex(currentState, stocks, newIndex):
             prev = stocks[newIndex - LookBack[xi - 1]]
             cur  = stocks[newIndex - LookBack[xi]]
 
-            priorPattern += [+1 if prev < cur else -1]
+            priorPattern += [+1 if prev < cur else 0]
 
     _, currentAssets = currentState
     newAssets = []
@@ -101,8 +102,25 @@ def getActions(state):
     actions += range(len(assets))  # sell
     return actions
 
-learnCount = collections.defaultdict(int)
-def learn(stocks, Q):
+def extractFeature(state, action):
+    priorPattern, currentAssets = state
+    return list(priorPattern) + [len(currentAssets)] + [action]
+    
+def Q_opt(state, action, weights):
+    product = 0.0
+    for index, feature in enumerate(extractFeature(state, action)):
+        product += weights[index] * feature
+
+    return product
+
+def updateWeights(state, action, reward, s_prime, weights):
+    V_opt = max([Q_opt(s_prime, a_prime, weights) for a_prime in getActions(s_prime)])
+    delta = Q_opt(state, action, weights) - (reward + Gamma * V_opt)
+
+    for index, feature in enumerate(extractFeature(state, action)):
+        weights[index] -= Eta * delta * feature
+
+def learn(stocks, weights):
     state = initState()
     for index in range(len(stocks) - 1):
         actions = getActions(state)
@@ -111,39 +129,36 @@ def learn(stocks, Q):
             action = random.choice(actions)
         else:
             # pick optimal action
-            _, action = max([(Q[(state, a)], a) for a in actions])
+            _, action = max([(Q_opt(state, a, weights), a) for a in actions])
 
         if action == -2:
             # Buy
-            r = -stocks[index]
+            reward = -stocks[index]
             s_prime = buyStock(state)
         elif action == -1:
             # No action
-            r = 0
+            reward = 0
             s_prime = state
         else:
             # Sell
             _, currentAssets = state
-            r = currentAssets[action][0]
+            reward = stocks[index]
             s_prime = sellStock(state, action)
 
         s_prime = advanceIndex(s_prime, stocks, index + 1)
-        Vopt = max([Q[(s_prime, a_prime)] for a_prime in getActions(s_prime)])
-        Q[(state, action)] = (1 - Eta) * Q[(state, action)] + Eta * (r + Vopt)
+        updateWeights(state, action, reward, s_prime, weights)
         state = s_prime
-        
-        learnCount[(state, action)] += 1
 
-def test(stocks, Q):
+def test(stocks, weights):
     state = initState()
     r = 0
     for index in range(len(stocks) - 1):
         actions = getActions(state)
         # optimal action
-        q, action = min([(Q[(state, a)], a) for a in actions])
+        q, action = max([(Q_opt(state, a, weights), a) for a in actions])
         if action == -2:
             # Buy
-            r += -stocks[index]
+            r -= stocks[index]
             s_prime = buyStock(state)
         elif action == -1:
             # No action
@@ -152,7 +167,7 @@ def test(stocks, Q):
         else:
             # Sell
             _, currentAssets = state
-            r += currentAssets[action][0]
+            r += stocks[index]
             s_prime = sellStock(state, action)
 
         s_prime = advanceIndex(s_prime, stocks, index + 1)
@@ -161,8 +176,7 @@ def test(stocks, Q):
     return r
         
 for key, dataStartDate, dataEndDate in Data:
-    Q = collections.defaultdict(int)
-    
+    weights = collections.defaultdict(int)
     dateToPrice, startDate, endDate = load(key)
     stocks = []
     date = startDate
@@ -172,6 +186,6 @@ for key, dataStartDate, dataEndDate in Data:
     stocksToLearn = stocks[0:-365]
     stocksToTest = stocks[-365:]
     
-    learn(stocksToLearn, Q)
-    reward = test(stocksToTest, Q)
-    print reward
+    learn(stocksToLearn, weights)
+    reward = test(stocksToTest, weights)
+    print '%s & %f \\\\ ' % (key, reward)
