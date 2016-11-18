@@ -27,7 +27,7 @@ can be modeled as a sequence of waves which shapes follow some defined
 rules. EWP suggests we can predict the future market price more
 accurately than a random chance by recognizing the wave pattern.
 
-This is distinct from other stock price prediction method in that it
+This is distinct from other stock price prediction methods in that it
 relies sololy on the historical price changes and doesn't use external
 information such as market sentiment or industrial news. While we
 could improve the prediction by using those methods complementary, for
@@ -40,7 +40,7 @@ new set of rules which predict the price more accurately.
 
 \subsection{Input and Output}
 
-The system learns the stock price change pattern from a historic price
+The system learns stock price patterns from historic price data
 obtained from Yahoo Finance
 (\url{https://finance.yahoo.com/quote/AAPL/history?p=AAPL}) and
 advises the optimal action (buy or sell) for today.
@@ -55,21 +55,20 @@ For example,
   \item \{Nov 12 2015: 121 stocks, Apr 1 2016: 53 stocks, ...\}
   \end{itemize}
 \item[Output]
-  Optimal buy / sell today. For example, \{Sell: \{ Nov 12 2015: 11 stocks, Apr 1 2016: 5 stocks \}, Buy: 12 stocks \}.
+  buy or sell suggestion for today. For example, \{Sell: \{ Nov 12 2015: 11 stocks, Apr 1 2016: 5 stocks \}, Buy: 12 stocks \}.
 \end{description}
 
 \section{Model}
 
-We model a stock market as an MDP where we neither know the
-transitions nor reward functions.
+We model a stock market as an MDP where we don't know the
+transition function.
 
 \subsection{State}
 
-The state is the historical stock price change and the set of
-currently own stocks. As of the current implementation, they are:
+The state consists of prior stock price change and amount of currently owned stocks. 
 
 \begin{itemize}
-\item Let $p_i$ be closing price $N[i]$ days ago, where $N \in [87,54,33,21,13,8,5,3,2,1]$.
+\item Let $p_i$ be the closing price $N[i]$ days ago, where $N \in [87,54,33,21,13,8,5,3,2,1]$.
   We use a set of Boolean indicating the price went up or down between each day, which is $\{I[p_i < p_{i+1}]\}$, as a
   state. ($I[..]$ is an indicator variable.)
 
@@ -77,21 +76,27 @@ currently own stocks. As of the current implementation, they are:
   some correlation between the stock market behavior and Fibonacci
   numbers.
   
-\item The current stocks owned. This is an array of tuple of
-  (difference between purchased price and today's price, number of
-  stocks).
+\item Currently owned stocks as an array of tuple:
+  \begin{itemize}
+  \item Price difference between purchased date and today
+  \item The number of owned stocks
+  \end{itemize}
+  
 \end{itemize}
 
 \subsection{Action}
 
-On a given day, we choose one or more of these operations. 
+On a given day, we perofrm a subset of these operations as an action. The subset can be an empty set, which represents
+no trade for the day.
 
 \begin{itemize}
-\item Don't do anything
-\item Buy stock(s).
+\item Buy $N$ stock.
 \item Sell stock(s). It specifies which stocks to sell in the
-  currently owned stocks array.
+  currently owned stocks array. 
 \end{itemize}
+
+For example, action: \{Sell: \{ Nov 12 2015: 11 stocks, Apr 1 2016: 5 stocks \}, Buy: 12 stocks \} means to sell 11
+stocks purchased on Nov 12 2015, sell 5 stocks purchased on Apr 1 2016, and buy 12 new stocks.
 
 \subsection{Reward}
 
@@ -113,7 +118,7 @@ use the following variables.
 
 \begin{align*}
   \epsilon &:= \text{Parameter for epsilon-greedy policy} \\
-  \phi(s,a) &:= \text{feature extractor} \\
+  \phi(state,action) &:= \text{feature extractor} \\
   p_i &:= \text{stock price of i-th day} \\
   \vect{w} &:= \text{weight to learn} \\
   \hat{Q}_{opt}(s, a; \vect{w}) &:= \vect{w} \dot \phi(s, a) \\
@@ -125,9 +130,8 @@ In learning phase, we loop through the stock price of each day.
 
 \subsubsection*{Choose an action}
 
-For each day, we examine the state and obtain the available
-actions. For example, while we can always buy a stock, we cannot sell
-a stock if we don't own one.
+We examine the state and obtain the available actions. For example, while we can always buy a stock, we cannot sell a
+stock if we don't own one.
 
 Based on whether a random number $[0.0, 1.0]$ is greater than
 $\epsilon$, we pick exploration or exploitation.
@@ -203,32 +207,19 @@ simplification.
   \item Actions are limited to buy or sell only one stock per day.
 \end{itemize}
 
-We run the algorithm over various stock over one year up to today. In
-short, we lost a lot of money. Also, in some stocks, the algorithm
-thinks don't buy or sell any stocks is the optimal choice. 
+We run the algorithm over various stock over one year up to today. We lost a lot of money. Also, in some stocks, the
+algorithm thinks not buying or selling any stocks is the optimal choice. We hope to improve the algorithm by lifting up
+the implementation limitation above.
 
 \begin{tabular}{|c|c|}
   \hline 
 dj & -1486.736328 \\ 
-gdx & 0.000000 \\ 
 qcom & -61.536490 \\ 
 rut & 268.510009 \\ 
 wmt & 212.577556 \\ 
 hd & 0.000000 \\ 
 low & -12.438588 \\ 
 tgt & 0.000000 \\ 
-cost & 0.000000 \\
-\hline
-\end{tabular}
-\begin{tabular}{|c|c|}
-\hline
-nke & 0.000000 \\ 
-ko & 0.000000 \\ 
-xom & 0.000000 \\ 
-cvx & -18.072437 \\ 
-cop & -192.961476 \\ 
-bp & 0.000000 \\ 
-ibm & -13.043052 \\ 
 aapl & 4.597696 \\
 \hline
 \end{tabular}
