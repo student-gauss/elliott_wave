@@ -108,18 +108,18 @@ def getActions(state):
     return actions
 
 def trainLearner(state, action, reward, s_prime, learner):
-    V_opt = max([learner.predict(learner.extractFeatures(s_prime, a_prime)) for a_prime in getActions(s_prime)])
+    V_opt, _ = getVoptAndAction(s_prime, learner)
     target = reward + Gamma * V_opt
     learner.train(learner.extractFeatures(state, action), target)
 
-def optimalAction(state, actions, learner):
-    QoptAndAction = []
-    for action in actions:
+def getVoptAndAction(state, learner):
+    QoptAndActionList = []
+    for action in getActions(state):
         phiX = learner.extractFeatures(state, action)
         Qopt = learner.predict(phiX)
-        QoptAndAction += [(Qopt, action)]
+        QoptAndActionList += [(Qopt, action)]
 
-    return max(QoptAndAction)[1]
+    return max(QoptAndActionList)
     
 def takeAction(stocks, index, state, action):
     reward = 0
@@ -149,7 +149,7 @@ def learn(stocks, learner):
             action = random.choice(actions)
         else:
             # pick optimal action
-            action = optimalAction(state, actions, learner)
+            _, action = getVoptAndAction(state, learner)
 
         reward, s_prime = takeAction(stocks, index, state, action)
         totalReward += reward
@@ -167,7 +167,7 @@ def test(stocks, learner):
     for index in range(len(stocks) - 1):
         actions = getActions(state)
         # optimal action
-        action = optimalAction(state, actions, learner)
+        _, action = getVoptAndAction(state, learner)
         reward, s_prime = takeAction(stocks, index, state, action)
         totalReward += reward
 
