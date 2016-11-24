@@ -14,9 +14,25 @@ class SimpleNNLearner(Learner):
     def extractFeatures(self, state, action):
         # prior pattern: [0, 1, 0, ...]
         # currentAssets: [(priceDiff, numStocks), ...]
-        priorPattern, currentAssets = state
+        currentPrice, history, currentAssets = state
 
-        return priorPattern
+        features = []
+        for priorPrice in history:
+            features += [float(priorPrice - currentPrice) / currentPrice]
+        
+        priceDiffThreshold = 0.1
+        while priceDiffThreshold < 1024:
+            nextThreshold = priceDiffThreshold * 2.0
+            numStocks = 0
+            for asset in currentAssets:
+                purchasePrice, quantity = asset
+                priceDiff = purchasePrice - currentPrice
+                if priceDiffThreshold <= priceDiff and priceDiff < nextThreshold:
+                    numStocks += quantity
+            features += [numStocks]
+            priceDiffThreshold = nextThreshold
+        
+        return features
         
     def train(self, phiX, target):
         self.hasFitted = True
@@ -24,10 +40,10 @@ class SimpleNNLearner(Learner):
         self.regressor.partial_fit(X, [target])
 
     def predict(self, phiX):
+        result = 0
         if self.hasFitted:
             X = np.array(phiX).reshape(1, -1)
-            return self.regressor.predict(X)[0]
-        else:
-            return 0.0
+            result = self.regressor.predict(X)[0]
+        return result
         
         

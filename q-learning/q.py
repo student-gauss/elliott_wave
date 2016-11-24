@@ -8,7 +8,7 @@ import itertools
 import matplotlib.pyplot as plt
 import fapprox
 
-Gamma = 0.9
+Gamma = 1.0
 LookBack = [87, 54, 33, 21, 13, 8, 5, 3, 2, 1]
 Epsilon = 0.1
 Data = [
@@ -54,62 +54,64 @@ def stockForDate(dateToPrice, date):
         date = date - np.timedelta64(1, 'D')
     return dateToPrice[date]
 
+def makeStockArray(dateToPrice, startDate, lastDay):
+    stocks = []
+    date = startDate
+    while date <= lastDate:
+        stocks += [stockForDate(dateToPrice, date)]
+        date += np.timedelta64(1, 'D')
+    return stocks
+
 # Initial state.
-def initState():
-    priorPattern = [0] * (len(LookBack) - 1)
+def initState(initialPrice):
+    history = [0] * (len(LookBack) - 1)
     assets = []
-    return tuple([tuple(priorPattern), tuple(assets)])
+    return tuple([initialPrice, history, assets])
 
 def advanceIndex(currentState, stocks, newIndex):
     if newIndex == 0:
         return currentState
     
-    priorPattern = []
+    history = []
     for xi in range(1, len(LookBack)):
-        prev = stocks[0]
-        cur = stocks[1]
-        if newIndex - LookBack[xi - 1] > 0 and newIndex - LookBack[xi] > 0:
-            prev = stocks[newIndex - LookBack[xi - 1]]
-            cur  = stocks[newIndex - LookBack[xi]]
+        lookBackIndex = newIndex - LookBack[xi]
+        lookBackIndex = max(lookBackIndex, 0)
+        history += [stocks[lookBackIndex]]
 
-        priorPattern += [+1 if prev < cur else 0]
+    _, _, currentAssets = currentState
 
-    _, currentAssets = currentState
-    newAssets = []
-    for priceDiff, numStocks in currentAssets:
-        newPriceDiff = priceDiff + (stocks[newIndex] - stocks[newIndex - 1])
-        newAssets += [(newPriceDiff, numStocks)]
-
-    return tuple([tuple(priorPattern), tuple(newAssets)])
+    return tuple([stocks[newIndex], history, currentAssets])
 
 def buyStock(currentState):
-    priorPattern, currentAssets = currentState
+    currentPrice, history, currentAssets = currentState
     
     newAssets = list(currentAssets)
-    newAssets += [(0, 1)]
+    newAssets += [(currentPrice, 1)]
 
-    return tuple([tuple(priorPattern), tuple(newAssets)])
+    return tuple([currentPrice, history, newAssets])
 
 def sellStock(currentState, assetIndex):
-    priorPattern, currentAssets = currentState
+    currentPrice, history, assets = currentState
     
-    newAssets = list(currentAssets)
-    del newAssets[assetIndex]
+    del assets[assetIndex]
 
-    return tuple([tuple(priorPattern), tuple(newAssets)])
+    return tuple([currentPrice, history, assets])
 
 def getActions(state):
-    _, assets = state
+    _, _, assets = state
     
     actions = []
     actions += [-2]   # buy
-    actions += [-1]   # no action
-    actions += random.sample(range(len(assets)), min(5, len(assets)))  # sell
+#    actions += [-1]   # no action
+    if len(assets) != 0:
+        actions += random.sample(range(len(assets)), min(5, len(assets)))  # sell
     return actions
 
 def trainLearner(state, action, reward, s_prime, learner):
     V_opt, _ = getVoptAndAction(s_prime, learner)
     target = reward + Gamma * V_opt
+
+    currentPrediction = learner.predict(learner.extractFeatures(state, action))
     learner.train(learner.extractFeatures(state, action), target)
 
 def getVoptAndAction(state, learner):
@@ -121,11 +123,13 @@ def getVoptAndAction(state, learner):
 
     return max(QoptAndActionList)
     
-def takeAction(stocks, index, state, action):
+def takeAction(state, action):
+    currentPrice, history, assets = state
+    
     reward = 0
     if action == -2:
         # Buy
-        reward = -stocks[index]
+        reward = -currentPrice
         s_prime = buyStock(state)
     elif action == -1:
         # No action
@@ -133,16 +137,18 @@ def takeAction(stocks, index, state, action):
         s_prime = state
     else:
         # Sell
-        _, currentAssets = state
-        reward = stocks[index]
+        reward = currentPrice
         s_prime = sellStock(state, action)
 
     return (reward, s_prime)
 
 def learn(stocks, learner):
-    state = initState()
+    state = None
     totalReward = 0
     for index in range(len(stocks) - 1):
+        if state == None:
+            state = initState(stocks[index])
+        
         actions = getActions(state)
         if random.random() < Epsilon:
             # pick random 
@@ -151,7 +157,7 @@ def learn(stocks, learner):
             # pick optimal action
             _, action = getVoptAndAction(state, learner)
 
-        reward, s_prime = takeAction(stocks, index, state, action)
+        reward, s_prime = takeAction(state, action)
         totalReward += reward
         
         s_prime = advanceIndex(s_prime, stocks, index + 1)
@@ -162,27 +168,22 @@ def learn(stocks, learner):
     
     
 def test(stocks, learner):
-    state = initState()
+    state = None
     totalReward = 0
     for index in range(len(stocks) - 1):
+        if state == None:
+            state = initState(stocks[index])
+
         actions = getActions(state)
         # optimal action
         _, action = getVoptAndAction(state, learner)
-        reward, s_prime = takeAction(stocks, index, state, action)
+        reward, s_prime = takeAction(state, action)
         totalReward += reward
 
         s_prime = advanceIndex(s_prime, stocks, index + 1)
         state = s_prime
 
     return totalReward
-
-def makeStockArray(dateToPrice, startDate, lastDay):
-    stocks = []
-    date = startDate
-    while date <= lastDate:
-        stocks += [stockForDate(dateToPrice, date)]
-        date += np.timedelta64(1, 'D')
-    return stocks
 
 for key, _, _ in Data:
     learner = fapprox.SimpleNNLearner()
@@ -202,7 +203,8 @@ for key, _, _ in Data:
     # last one year.
     stocksToTest = stocks[-365:]
 
-    learn(stocksToLearn, learner)
+    for i in range(4):
+        learn(stocksToLearn, learner)
 
     # Reward := How much money I got/lost.
     reward = test(stocksToTest, learner)
