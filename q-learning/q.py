@@ -1,32 +1,34 @@
+import sys
 import csv
 import datetime
 import numpy as np
 import collections
 import random
 import itertools
+import matplotlib.pyplot as plt
 
-Eta = 0.1
-Gamma = 0.9
+Eta = 0.01
+Gamma = 1
 LookBack = [87, 54, 33, 21, 13, 8, 5, 3, 2, 1]
-Epsilon = 0.5
+Epsilon = 0.1
 Data = [
     ('dj', None, None),
-    ('gdx', None, None),
-    ('qcom', None, None),
-    ('rut', None, None),
-    ('wmt', None, None),
-    ('hd', None, None),
-    ('low', None, None),
-    ('tgt', None, None),
-    ('cost', None, None),
-    ('nke', None, None),
-    ('ko', None, None),
-    ('xom', None, None),
-    ('cvx', None, None),
-    ('cop', None, None),
-    ('bp', None, None),
-    ('ibm', None, None),
-    ('aapl', None, None),
+    # ('gdx', None, None),
+    # ('qcom', None, None),
+    # ('rut', None, None),
+    # ('wmt', None, None),
+    # ('hd', None, None),
+    # ('low', None, None),
+    # ('tgt', None, None),
+    # ('cost', None, None),
+    # ('nke', None, None),
+    # ('ko', None, None),
+    # ('xom', None, None),
+    # ('cvx', None, None),
+    # ('cop', None, None),
+    # ('bp', None, None),
+    # ('ibm', None, None),
+    # ('aapl', None, None),
 ]
 
 def load(key):
@@ -44,12 +46,15 @@ def load(key):
             dateToPrice[date] = price
     return (dateToPrice, startDate, endDate)
 
+# Utility function to return the stock price for the day. It returns
+# the last day price if the stock data for the day is not available
+# (e.g. holiday)
 def stockForDate(dateToPrice, date):
     while not date in dateToPrice:
         date = date - np.timedelta64(1, 'D')
     return dateToPrice[date]
 
-
+# Initial state.
 def initState():
     priorPattern = [0] * (len(LookBack) - 1)
     assets = []
@@ -99,7 +104,7 @@ def getActions(state):
     actions = []
     actions += [-2]   # buy
     actions += [-1]   # no action
-    actions += range(len(assets))  # sell
+    actions += random.sample(range(len(assets)), min(5, len(assets)))  # sell
     return actions
 
 def extractFeature(state, action):
@@ -113,15 +118,37 @@ def Q_opt(state, action, weights):
 
     return product
 
+weightHistory = []
 def updateWeights(state, action, reward, s_prime, weights):
     V_opt = max([Q_opt(s_prime, a_prime, weights) for a_prime in getActions(s_prime)])
     delta = Q_opt(state, action, weights) - (reward + Gamma * V_opt)
 
     for index, feature in enumerate(extractFeature(state, action)):
         weights[index] -= Eta * delta * feature
+        if index == 0:
+            weightHistory.append(weights[index])
+
+def takeAction(stocks, index, state, action):
+    reward = 0
+    if action == -2:
+        # Buy
+        reward = -stocks[index]
+        s_prime = buyStock(state)
+    elif action == -1:
+        # No action
+        reward = 0
+        s_prime = state
+    else:
+        # Sell
+        _, currentAssets = state
+        reward = stocks[index]
+        s_prime = sellStock(state, action)
+
+    return (reward, s_prime)
 
 def learn(stocks, weights):
     state = initState()
+    totalReward = 0
     for index in range(len(stocks) - 1):
         actions = getActions(state)
         if random.random() < Epsilon:
@@ -131,61 +158,68 @@ def learn(stocks, weights):
             # pick optimal action
             _, action = max([(Q_opt(state, a, weights), a) for a in actions])
 
-        if action == -2:
-            # Buy
-            reward = -stocks[index]
-            s_prime = buyStock(state)
-        elif action == -1:
-            # No action
-            reward = 0
-            s_prime = state
-        else:
-            # Sell
-            _, currentAssets = state
-            reward = stocks[index]
-            s_prime = sellStock(state, action)
-
+        reward, s_prime = takeAction(stocks, index, state, action)
+        totalReward += reward
+        
         s_prime = advanceIndex(s_prime, stocks, index + 1)
         updateWeights(state, action, reward, s_prime, weights)
         state = s_prime
-
+        if index % 1000 == 0:
+            _, currentAssets = state
+            print('%d' % len(currentAssets))
+        
+    print "In-test reward: ", totalReward
+    
+    
 def test(stocks, weights):
     state = initState()
-    r = 0
+    totalReward = 0
     for index in range(len(stocks) - 1):
         actions = getActions(state)
         # optimal action
         q, action = max([(Q_opt(state, a, weights), a) for a in actions])
-        if action == -2:
-            # Buy
-            r -= stocks[index]
-            s_prime = buyStock(state)
-        elif action == -1:
-            # No action
-            r += 0
-            s_prime = state
-        else:
-            # Sell
-            _, currentAssets = state
-            r += stocks[index]
-            s_prime = sellStock(state, action)
+
+        reward, s_prime = takeAction(stocks, index, state, action)
+        totalReward += reward
 
         s_prime = advanceIndex(s_prime, stocks, index + 1)
         state = s_prime
 
-    return r
-        
-for key, dataStartDate, dataEndDate in Data:
-    weights = collections.defaultdict(int)
-    dateToPrice, startDate, endDate = load(key)
+    return totalReward
+
+def makeStockArray(dateToPrice, startDate, lastDay):
     stocks = []
     date = startDate
-    while date < endDate:
+    while date <= lastDate:
         stocks += [stockForDate(dateToPrice, date)]
         date += np.timedelta64(1, 'D')
+    return stocks
+
+for key, _, _ in Data:
+    # weight vector to be updated as we learn.
+    weights = collections.defaultdict(int)
+
+    # dataToPrice[np.datetime64] := adjusted close price
+    # startDate := The first date in the stock data
+    # lastDate := The last date in the stock data
+    dateToPrice, startDate, lastDate = load(key)
+
+    # Fill up stocks, the prices array, so that we can look up by day-index.
+    stocks = makeStockArray(dateToPrice, startDate, lastDate)
+
+    # We learn from the first day up to one year ago.
     stocksToLearn = stocks[0:-365]
+
+    # And test the learned weight performance by exercising in the
+    # last one year.
     stocksToTest = stocks[-365:]
-    
+
     learn(stocksToLearn, weights)
+
+    # Reward := How much money I got/lost.
     reward = test(stocksToTest, weights)
-    print '%s & %f \\\\ ' % (key, reward)
+    print '%s & %f' % (key, reward)
+
+    plt.plot(weightHistory)
+    plt.show()
+    plt.close()
