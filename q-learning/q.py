@@ -6,29 +6,29 @@ import collections
 import random
 import itertools
 import matplotlib.pyplot as plt
+import fapprox
 
-Eta = 0.01
-Gamma = 1
+Gamma = 0.9
 LookBack = [87, 54, 33, 21, 13, 8, 5, 3, 2, 1]
 Epsilon = 0.1
 Data = [
     ('dj', None, None),
-    # ('gdx', None, None),
-    # ('qcom', None, None),
-    # ('rut', None, None),
-    # ('wmt', None, None),
-    # ('hd', None, None),
-    # ('low', None, None),
-    # ('tgt', None, None),
-    # ('cost', None, None),
-    # ('nke', None, None),
-    # ('ko', None, None),
-    # ('xom', None, None),
-    # ('cvx', None, None),
-    # ('cop', None, None),
-    # ('bp', None, None),
-    # ('ibm', None, None),
-    # ('aapl', None, None),
+    ('gdx', None, None),
+    ('qcom', None, None),
+    ('rut', None, None),
+    ('wmt', None, None),
+    ('hd', None, None),
+    ('low', None, None),
+    ('tgt', None, None),
+    ('cost', None, None),
+    ('nke', None, None),
+    ('ko', None, None),
+    ('xom', None, None),
+    ('cvx', None, None),
+    ('cop', None, None),
+    ('bp', None, None),
+    ('ibm', None, None),
+    ('aapl', None, None),
 ]
 
 def load(key):
@@ -72,7 +72,7 @@ def advanceIndex(currentState, stocks, newIndex):
             prev = stocks[newIndex - LookBack[xi - 1]]
             cur  = stocks[newIndex - LookBack[xi]]
 
-            priorPattern += [+1 if prev < cur else 0]
+        priorPattern += [+1 if prev < cur else 0]
 
     _, currentAssets = currentState
     newAssets = []
@@ -107,27 +107,20 @@ def getActions(state):
     actions += random.sample(range(len(assets)), min(5, len(assets)))  # sell
     return actions
 
-def extractFeature(state, action):
-    priorPattern, currentAssets = state
-    return list(priorPattern) + [len(currentAssets)] + [action]
+def trainLearner(state, action, reward, s_prime, learner):
+    V_opt = max([learner.predict(learner.extractFeatures(s_prime, a_prime)) for a_prime in getActions(s_prime)])
+    target = reward + Gamma * V_opt
+    learner.train(learner.extractFeatures(state, action), target)
+
+def optimalAction(state, actions, learner):
+    QoptAndAction = []
+    for action in actions:
+        phiX = learner.extractFeatures(state, action)
+        Qopt = learner.predict(phiX)
+        QoptAndAction += [(Qopt, action)]
+
+    return max(QoptAndAction)[1]
     
-def Q_opt(state, action, weights):
-    product = 0.0
-    for index, feature in enumerate(extractFeature(state, action)):
-        product += weights[index] * feature
-
-    return product
-
-weightHistory = []
-def updateWeights(state, action, reward, s_prime, weights):
-    V_opt = max([Q_opt(s_prime, a_prime, weights) for a_prime in getActions(s_prime)])
-    delta = Q_opt(state, action, weights) - (reward + Gamma * V_opt)
-
-    for index, feature in enumerate(extractFeature(state, action)):
-        weights[index] -= Eta * delta * feature
-        if index == 0:
-            weightHistory.append(weights[index])
-
 def takeAction(stocks, index, state, action):
     reward = 0
     if action == -2:
@@ -146,7 +139,7 @@ def takeAction(stocks, index, state, action):
 
     return (reward, s_prime)
 
-def learn(stocks, weights):
+def learn(stocks, learner):
     state = initState()
     totalReward = 0
     for index in range(len(stocks) - 1):
@@ -156,29 +149,25 @@ def learn(stocks, weights):
             action = random.choice(actions)
         else:
             # pick optimal action
-            _, action = max([(Q_opt(state, a, weights), a) for a in actions])
+            action = optimalAction(state, actions, learner)
 
         reward, s_prime = takeAction(stocks, index, state, action)
         totalReward += reward
         
         s_prime = advanceIndex(s_prime, stocks, index + 1)
-        updateWeights(state, action, reward, s_prime, weights)
+        trainLearner(state, action, reward, s_prime, learner)
         state = s_prime
-        if index % 1000 == 0:
-            _, currentAssets = state
-            print('%d' % len(currentAssets))
         
     print "In-test reward: ", totalReward
     
     
-def test(stocks, weights):
+def test(stocks, learner):
     state = initState()
     totalReward = 0
     for index in range(len(stocks) - 1):
         actions = getActions(state)
         # optimal action
-        q, action = max([(Q_opt(state, a, weights), a) for a in actions])
-
+        action = optimalAction(state, actions, learner)
         reward, s_prime = takeAction(stocks, index, state, action)
         totalReward += reward
 
@@ -196,9 +185,8 @@ def makeStockArray(dateToPrice, startDate, lastDay):
     return stocks
 
 for key, _, _ in Data:
-    # weight vector to be updated as we learn.
-    weights = collections.defaultdict(int)
-
+    learner = fapprox.SimpleNNLearner()
+    
     # dataToPrice[np.datetime64] := adjusted close price
     # startDate := The first date in the stock data
     # lastDate := The last date in the stock data
@@ -214,12 +202,11 @@ for key, _, _ in Data:
     # last one year.
     stocksToTest = stocks[-365:]
 
-    learn(stocksToLearn, weights)
+    learn(stocksToLearn, learner)
 
     # Reward := How much money I got/lost.
-    reward = test(stocksToTest, weights)
+    reward = test(stocksToTest, learner)
     print '%s & %f' % (key, reward)
 
-    plt.plot(weightHistory)
     plt.show()
     plt.close()
