@@ -1,4 +1,5 @@
 from sklearn.neural_network import MLPRegressor
+from sklearn.linear_model import SGDRegressor
 import numpy as np
 
 class Learner:
@@ -12,39 +13,17 @@ class SimpleNNLearner(Learner):
         self.hasFitted = False
 
     def extractFeatures(self, state, action):
-        # prior pattern: [0, 1, 0, ...]
-        # currentAssets: [(priceDiff, numStocks), ...]
-        currentPrice, history, currentAssets = state
+        # currentPrice: Float
+        # history: [0, 1, 0, ...]
+        # ownedStocks: Int
+        currentPrice, history, ownedStocks = state
 
         features = []
         for priorPrice in history:
             features += [float(priorPrice - currentPrice) / currentPrice]
-        
-        priceDiffThreshold = 0.01
-        while priceDiffThreshold < 128:
-            nextThreshold = priceDiffThreshold * 2.0
-            numStocks = 0
-            for asset in currentAssets:
-                purchasePrice, quantity = asset
-                priceDiff = purchasePrice - currentPrice
-                if priceDiffThreshold <= priceDiff and priceDiff < nextThreshold:
-                    numStocks += quantity
-            features += [numStocks]
-            priceDiffThreshold = nextThreshold
 
-        priceDiffThreshold = -0.01
-        while priceDiffThreshold > -128:
-            nextThreshold = priceDiffThreshold * 2.0
-            numStocks = 0
-            for asset in currentAssets:
-                purchasePrice, quantity = asset
-                priceDiff = purchasePrice - currentPrice
-                if nextThreshold <= priceDiff and priceDiff < priceDiffThreshold:
-                    numStocks += quantity
-            features += [numStocks]
-            priceDiffThreshold = nextThreshold
-
-        features += [action[0]]
+        features += [ownedStocks]
+        features += list(action)
         return features
         
     def train(self, phiX, target):
@@ -59,4 +38,33 @@ class SimpleNNLearner(Learner):
             result = self.regressor.predict(X)[0]
         return result
         
+class SimpleSGDLearner(Learner):
+    def __init__(self):
+        self.regressor = SGDRegressor()
+        self.hasFitted = False
+
+    def extractFeatures(self, state, action):
+        # currentPrice: Float
+        # history: [0, 1, 0, ...]
+        # ownedStocks: Int
+        currentPrice, history, ownedStocks = state
+
+        features = []
+        for priorPrice in history:
+            features += [float(priorPrice - currentPrice) / currentPrice]
+
+        features += [ownedStocks]
+        features += list(action)
+        return features
         
+    def train(self, phiX, target):
+        self.hasFitted = True
+        X = np.array(phiX).reshape(1, -1)
+        self.regressor.partial_fit(X, [target])
+
+    def predict(self, phiX):
+        result = 0
+        if self.hasFitted:
+            X = np.array(phiX).reshape(1, -1)
+            result = self.regressor.predict(X)[0]
+        return result
