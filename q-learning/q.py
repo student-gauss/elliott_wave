@@ -82,29 +82,49 @@ def advanceIndex(currentState, stocks, newIndex):
 
     return tuple([stocks[newIndex], history, currentAssets])
 
-def buyStock(currentState):
+def buyStock(currentState, quantity):
+    if quantity == 0:
+        return currentState
+
     currentPrice, history, currentAssets = currentState
     
     newAssets = list(currentAssets)
-    newAssets += [(currentPrice, 1)]
+    newAssets += [(currentPrice, quantity)]
 
+#    print 'Buy %d -> %s' % (quantity, newAssets)
     return tuple([currentPrice, history, newAssets])
 
-def sellStock(currentState, assetIndex):
+def sellStock(currentState, assetIndex, quantityToSell):
     currentPrice, history, assets = currentState
-    
-    del assets[assetIndex]
 
+    purchasePrice, currentQuantity = assets[assetIndex]
+    newQuantity = currentQuantity - quantityToSell
+#    print 'Current assets: %s' % assets
+    assets[assetIndex] = tuple([purchasePrice, newQuantity])
+
+#    print 'Sell index %d for %d -> %s ' % (assetIndex, quantityToSell, assets)
+    
     return tuple([currentPrice, history, assets])
 
-def getActions(state):
+def generateSellAction(state, buddingAction, assetIndex, actions):
     _, _, assets = state
+    if assetIndex == len(assets):
+        actions += [buddingAction]
+        return
     
+    for stocksToSell in range(assets[assetIndex][1] + 1):
+        nextBuddingAction = list(buddingAction)
+        nextBuddingAction += [stocksToSell]
+        generateSellAction(state, nextBuddingAction, assetIndex + 1, actions)
+
+def generateBuyAction(state, actions):
+    for stocksToBuy in range(0, 3):
+        buddingAction = [stocksToBuy]
+        generateSellAction(state, buddingAction, 0, actions)
+    
+def getActions(state):
     actions = []
-    actions += [-2]   # buy
-#    actions += [-1]   # no action
-    if len(assets) != 0:
-        actions += random.sample(range(len(assets)), min(5, len(assets)))  # sell
+    generateBuyAction(state, actions)
     return actions
 
 def trainLearner(state, action, reward, s_prime, learner):
@@ -125,21 +145,21 @@ def getVoptAndAction(state, learner):
     
 def takeAction(state, action):
     currentPrice, history, assets = state
-    
     reward = 0
-    if action == -2:
-        # Buy
-        reward = -currentPrice
-        s_prime = buyStock(state)
-    elif action == -1:
-        # No action
-        reward = 0
-        s_prime = state
-    else:
-        # Sell
-        reward = currentPrice
-        s_prime = sellStock(state, action)
+    s_prime = state
+    for actionIndex, quantity in enumerate(action):
+        if actionIndex == 0:
+            # Buy
+            reward -= currentPrice * quantity
+            s_prime = buyStock(s_prime, action[0])
+        else:
+            # Sell
+            reward += currentPrice * quantity
+            s_prime = sellStock(s_prime, actionIndex - 1, quantity)
 
+    newPrice, newHistory, newAssets = s_prime
+    newAssets = [(purchasePrice, quantity) for purchasePrice, quantity in newAssets if quantity != 0]
+    s_prime = (newPrice, newHistory, newAssets)
     return (reward, s_prime)
 
 def learn(stocks, learner):
@@ -159,6 +179,10 @@ def learn(stocks, learner):
 
         reward, s_prime = takeAction(state, action)
         totalReward += reward
+
+#        print '%s -> %s: Reward %d' % (actions, action, reward)
+#        _, _, currentAssets = s_prime
+#        print 'Reward %d, assets: %d' % (reward, len(currentAssets))
         
         s_prime = advanceIndex(s_prime, stocks, index + 1)
         trainLearner(state, action, reward, s_prime, learner)
@@ -203,8 +227,7 @@ for key, _, _ in Data:
     # last one year.
     stocksToTest = stocks[-365:]
 
-    for i in range(4):
-        learn(stocksToLearn, learner)
+    learn(stocksToLearn, learner)
 
     # Reward := How much money I got/lost.
     reward = test(stocksToTest, learner)

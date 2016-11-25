@@ -20,8 +20,8 @@ class SimpleNNLearner(Learner):
         for priorPrice in history:
             features += [float(priorPrice - currentPrice) / currentPrice]
         
-        priceDiffThreshold = 0.1
-        while priceDiffThreshold < 1024:
+        priceDiffThreshold = 0.01
+        while priceDiffThreshold < 128:
             nextThreshold = priceDiffThreshold * 2.0
             numStocks = 0
             for asset in currentAssets:
@@ -31,7 +31,20 @@ class SimpleNNLearner(Learner):
                     numStocks += quantity
             features += [numStocks]
             priceDiffThreshold = nextThreshold
-        
+
+        priceDiffThreshold = -0.01
+        while priceDiffThreshold > -128:
+            nextThreshold = priceDiffThreshold * 2.0
+            numStocks = 0
+            for asset in currentAssets:
+                purchasePrice, quantity = asset
+                priceDiff = purchasePrice - currentPrice
+                if nextThreshold <= priceDiff and priceDiff < priceDiffThreshold:
+                    numStocks += quantity
+            features += [numStocks]
+            priceDiffThreshold = nextThreshold
+
+        features += [action[0]]
         return features
         
     def train(self, phiX, target):
