@@ -23,7 +23,8 @@ class SimpleNNLearner(Learner):
             features += [float(priorPrice - currentPrice) / currentPrice]
 
         features += [ownedStocks]
-        features += list(action)
+
+        features += [action]
         return features
         
     def train(self, phiX, target):
@@ -54,7 +55,7 @@ class SimpleSGDLearner(Learner):
             features += [float(priorPrice - currentPrice) / currentPrice]
 
         features += [ownedStocks]
-        features += list(action)
+        features += [action]
         return features
         
     def train(self, phiX, target):

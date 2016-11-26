@@ -8,11 +8,11 @@ import itertools
 import matplotlib.pyplot as plt
 import fapprox
 
-Gamma = 0.9
+Gamma = 0.90
 LookBack = [87, 54, 33, 21, 13, 8, 5, 3, 2, 1]
-Epsilon = 0.5
+Epsilon = 0.1
 Data = [
-    #('dj', None, None),
+    ('dj', None, None),
     # ('gdx', None, None),
     # ('qcom', None, None),
     # ('rut', None, None),
@@ -28,7 +28,7 @@ Data = [
     # ('cop', None, None),
     # ('bp', None, None),
     # ('ibm', None, None),
-     ('aapl', None, None),
+    # ('aapl', None, None),
 ]
 
 def load(key):
@@ -80,33 +80,9 @@ def moveStateToIndex(currentState, stocks, newIndex):
     _, _, ownedStocks = currentState
     return tuple([stocks[newIndex], history, ownedStocks])
 
-def buyStock(currentState, numberOfStocksToBuy):
-    if numberOfStocksToBuy == 0:
-        return currentState
-
-    currentPrice, history, ownedStocks = currentState
-
-#    print 'Buy %d -> %d' % (numberOfStocksToBuy, ownedStocks)
-    return tuple([currentPrice, history, ownedStocks + numberOfStocksToBuy])
-
-def sellStock(currentState, numberOfStocksToSell):
-    currentPrice, history, ownedStocks = currentState
-
-    newOwnedStocks = ownedStocks - numberOfStocksToSell
-#    print 'Sell %d -> %d ' % (numberOfStocksToSell, ownedStocks)
-    
-    return tuple([currentPrice, history, newOwnedStocks])
-
 def getActions(state):
-    actions = []
-
     currentPrice, history, ownedStocks = state
-    for numberOfStocksToBuy in range(0, 2 + 1):
-        for numberOfStocksToSell in range(0, ownedStocks + 1):
-            if numberOfStocksToBuy != numberOfStocksToSell:
-                actions += [(numberOfStocksToBuy, numberOfStocksToSell)]
-
-    actions += [(0, 0)]
+    actions = range(-ownedStocks, 4)
     return actions
 
 errorHistory = []
@@ -132,15 +108,10 @@ def takeAction(state, action):
     reward = 0
     s_prime = state
 
-    numberOfStocksToBuy, numberOfStocksToSell = action
-    
-    # Buy
-    reward -= currentPrice * numberOfStocksToBuy
-    s_prime = buyStock(s_prime, numberOfStocksToBuy)
-
-    # Sell
-    reward += currentPrice * numberOfStocksToSell
-    s_prime = sellStock(s_prime, numberOfStocksToSell)
+    # positive action: buy
+    # negative action: sell
+    reward  -= currentPrice * action
+    s_prime = (currentPrice, history, ownedStocks + action)
     return (reward, s_prime)
 
 def learn(stocks, learner):
@@ -191,7 +162,7 @@ def test(stocks, learner):
     return totalReward
 
 for key, _, _ in Data:
-    learner = fapprox.SimpleSGDLearner()
+    learner = fapprox.SimpleNNLearner()
     
     # dataToPrice[np.datetime64] := adjusted close price
     # startDate := The first date in the stock data
@@ -209,7 +180,7 @@ for key, _, _ in Data:
     stocksToTest = stocks[-365:]
 
     errorHistory = []
-    for i in range(3):
+    for i in range(200):
         learn(stocksToLearn, learner)
 
     # Reward := How much money I got/lost.
@@ -217,5 +188,5 @@ for key, _, _ in Data:
     print '%s & %f' % (key, reward)
 
     plt.plot(errorHistory)
-    plt.show()
+    plt.savefig('errorHistory.png')
     plt.close()
