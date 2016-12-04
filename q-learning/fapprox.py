@@ -16,13 +16,14 @@ class SimpleNNLearner(Learner):
         # currentPrice: Float
         # history: [0, 1, 0, ...]
         # ownedStocks: Int
-        currentPrice, history, ownedStocks = state
+        currentPrice, history, ownedStocks, cash = state
 
         features = []
         for priorPrice in history:
             features += [float(priorPrice - currentPrice) / currentPrice]
 
         features += [ownedStocks]
+        features += [cash]
 
         features += [action]
         return features
@@ -48,13 +49,14 @@ class SimpleSGDLearner(Learner):
         # currentPrice: Float
         # history: [0, 1, 0, ...]
         # ownedStocks: Int
-        currentPrice, history, ownedStocks = state
+        currentPrice, history, ownedStocks, cash = state
 
         features = []
         for priorPrice in history:
             features += [float(priorPrice - currentPrice) / currentPrice]
 
         features += [ownedStocks]
+        features += [cash]
         features += [action]
         return features
         
