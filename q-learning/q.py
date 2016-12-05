@@ -8,7 +8,7 @@ import itertools
 import matplotlib.pyplot as plt
 import fapprox
 
-Gamma = 0.9
+Gamma = 1.0
 LookBack = [87, 54, 33, 21, 13, 8, 5, 3, 2, 1]
 Epsilon = 0.9
 Data = [
@@ -90,7 +90,7 @@ def trainLearner(state, action, reward, s_prime, learner):
     
     errorHistory.append(learner.predict(learner.extractFeatures(state, action)) - target)
     
-#    print '[Learn] State = %s / Action = %s, Vopt = %f -> %f' % (state, action, target, learner.predict(learner.extractFeatures(state, action)))
+    print '[Learn] State = %s / Action = %s, Vopt = %f -> %f' % (state, action, target, learner.predict(learner.extractFeatures(state, action)))
     learner.train(learner.extractFeatures(state, action), target)
 
 def getVoptAndAction(state, learner):
@@ -104,23 +104,25 @@ def getVoptAndAction(state, learner):
     
 def takeAction(state, action):
     currentPrice, history, ownedStocks, cash = state
-    reward = 0
     s_prime = state
 
     # positive action: buy
     # negative action: sell
-    reward  -= currentPrice * action
+    reward = -currentPrice * action
     s_prime = (currentPrice, history, ownedStocks + action, cash + reward)
     return (reward, s_prime)
 
 def learn(stocks, learner):
     state = None
-    totalReward = 0
     for index in range(len(stocks) - 1):
         if state == None:
             state = initState(stocks[index])
-        
+
         actions = getActions(state)
+        if len(actions) == 1:
+            # No stock, no cash
+            break
+        
         if random.random() < Epsilon:
             # pick random 
             action = random.choice(actions)
@@ -128,41 +130,40 @@ def learn(stocks, learner):
             # pick optimal action
             _, action = getVoptAndAction(state, learner)
 
-        reward, s_prime = takeAction(state, action)
+        _, s_prime = takeAction(state, action)
 
-#        print 'On state = %s, we took action = %s and got %d' % (state, action, reward)
-        
-        totalReward += reward
-
-#        print '%s -> %s: Reward %d' % (actions, action, reward)
-#        _, _, currentAssets = s_prime
-#        print 'Reward %d, assets: %d' % (reward, len(currentAssets))
-        
         s_prime = moveStateToIndex(s_prime, stocks, index + 1)
+
+        if index + 1 == len(stocks) - 1:
+            price, _, ownedStocks, cash = s_prime
+            reward = price * ownedStocks + cash
+        else:
+            reward = 0
+
         trainLearner(state, action, reward, s_prime, learner)
         state = s_prime
         
-    print "In-test reward: ", totalReward
-
 def test(stocks, learner):
     state = None
     totalReward = 0
     for index in range(len(stocks) - 1):
         if state == None:
             state = initState(stocks[index])
-
+            
         actions = getActions(state)
         # optimal action
         _, action = getVoptAndAction(state, learner)
 
-#        print 'On state = %s, we should take action = %s' % (state, action)
-        
         reward, s_prime = takeAction(state, action)
         totalReward += reward
 
         s_prime = moveStateToIndex(s_prime, stocks, index + 1)
         state = s_prime
 
+    print state
+    currentPrice, _, ownedStocks, cash = state
+    totalReward += currentPrice * ownedStocks + cash
+    
     return totalReward
 
 def simpleTest():
