@@ -90,7 +90,7 @@ def trainLearner(state, action, reward, s_prime, learner):
     
     errorHistory.append(learner.predict(learner.extractFeatures(state, action)) - target)
     
-    print '[Learn] State = %s / Action = %s, Vopt = %f -> %f' % (state, action, target, learner.predict(learner.extractFeatures(state, action)))
+#    print '[Learn] State = %s / Action = %s, Vopt = %f -> %f' % (state, action, target, learner.predict(learner.extractFeatures(state, action)))
     learner.train(learner.extractFeatures(state, action), target)
 
 def getVoptAndAction(state, learner):
@@ -155,7 +155,7 @@ def test(stocks, learner):
         # optimal action
         _, action = getVoptAndAction(state, learner)
 
-        print 'On state = %s, we should take action = %s' % (state, action)
+#        print 'On state = %s, we should take action = %s' % (state, action)
         
         reward, s_prime = takeAction(state, action)
         totalReward += reward
@@ -173,6 +173,10 @@ def simpleTest():
 
     reward = test(stocks, learner)
     print '%f' % reward
+
+    plt.plot(errorHistory)
+    plt.savefig('errorHistory.png')
+    plt.close()
     
 def main():
     for key, _, _ in Data:
@@ -194,10 +198,10 @@ def main():
         stocksToTest = stocks[-365:]
         
         errorHistory = []
-        for i in range(1):
+        for i in range(2):
             learn(stocksToLearn, learner)
             
-            # Reward := How much money I got/lost.
+        # Reward := How much money I got/lost.
         reward = test(stocksToTest, learner)
         print '%s & %f' % (key, reward)
             

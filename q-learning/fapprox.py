@@ -25,7 +25,7 @@ class SimpleNNLearner(Learner):
         features += [ownedStocks]
         features += [cash]
 
-        features += [action]
+        features += [ action > 0 ]
         return features
         
     def train(self, phiX, target):
