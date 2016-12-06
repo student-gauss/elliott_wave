@@ -12,7 +12,7 @@ Gamma = 1.0
 LookBack = [87, 54, 33, 21, 13, 8, 5, 3, 2, 1]
 Epsilon = 0.9
 Data = [
-    ('dj', None, None),
+    # ('dj', None, None),
     # ('gdx', None, None),
     # ('qcom', None, None),
     # ('rut', None, None),
@@ -28,7 +28,7 @@ Data = [
     # ('cop', None, None),
     # ('bp', None, None),
     # ('ibm', None, None),
-    # ('aapl', None, None),
+    ('aapl', None, None),
 ]
 
 def load(key):
@@ -175,6 +175,12 @@ def simpleTest():
     reward = test(stocks, learner)
     print '%f' % reward
 
+    state = initState(100)
+    for action in getActions(state):
+        phiX = learner.extractFeatures(state, action)
+        Qopt = learner.predict(phiX)
+        print Qopt, action
+    
     plt.plot(errorHistory)
     plt.savefig('errorHistory.png')
     plt.close()
@@ -197,9 +203,9 @@ def main():
         # And test the learned weight performance by exercising in the
         # last one year.
         stocksToTest = stocks[-365:]
-        
+
         errorHistory = []
-        for i in range(2):
+        for i in range(20):
             learn(stocksToLearn, learner)
             
         # Reward := How much money I got/lost.
@@ -211,5 +217,5 @@ def main():
         plt.close()
 
 
-# main()
-simpleTest()
+main()
+# simpleTest()
