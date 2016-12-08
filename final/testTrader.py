@@ -76,6 +76,28 @@ def trainTrader(label, trader, maxIndex):
         
         trader.train(startIndex, endIndex)
 
+def test():
+    stocks = [1, 2, 3, 4, 3, 2]
+    
+    def getPrice(index):
+        if index < 0:
+            return stocks[0]
+        elif index >= len(stocks):
+            return stocks[len(stocks) - 1]
+        return stocks[index]
+
+    predictor = CheatPredictor(getPrice)
+    predictor.predictingDelta = [1, 2, 3]
+    trainPredictor('test', predictor, len(stocks))
+
+    trader = RotQTrader(predictor, getPrice)
+    for i in range(100000):
+        trader.train(0, len(stocks))
+
+    print 'Testing'
+    gain = trader.test(0, len(stocks))
+    print gain
+    
 def main():
     for key, _, _ in Data:
         # dataToPrice[np.datetime64] := adjusted close price
@@ -106,4 +128,5 @@ def main():
         for trader in traders:
             gain = trader.test(len(stocks) - 365, len(stocks))
             print '%s gain: %f' % (key, gain)
-main()
+#main()
+test()

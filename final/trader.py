@@ -22,13 +22,14 @@ class RotQTrader(Trader):
 
     def getPrediction(self, index):
         phiX = self.predictor.extractFeatures(index)
-        futurePrices = self.predictor.predict(phiX)
+        futurePrices = [0]
+        futurePrices += self.predictor.predict(phiX)
         
-        m, _ = np.polyfit(self.predictor.predictingDelta, futurePrices, 1)
-
-        if m < -1:
+        m, _ = np.polyfit([0] + self.predictor.predictingDelta, futurePrices, 1)
+#        print 'Prediction. Future Prices: %s, slope: %f' % (futurePrices, m)
+        if m < -0.01:
             return -1
-        elif m > 1:
+        elif m > 0.01:
             return 1
         else:
             return 0
@@ -108,8 +109,16 @@ class RotQTrader(Trader):
             state = s_prime
             
     def test(self, startIndex, endIndex):
-        state = None
 
+        stat = collections.defaultdict(int)
+        for key, value in self.Qopt.iteritems():
+            state, action = key
+            ownedStocks, maxStocksToBuy, prediction = state
+            stat[prediction] += action
+            
+
+        state = None
+        print stat
         for index in range(startIndex, endIndex):
             if state == None:
                 state = self.initState(index)
@@ -121,9 +130,9 @@ class RotQTrader(Trader):
 
             # pick optimal action
             _, action = self.getVoptAndAction(state)
+            print 'Pick optimal action. State = %s, action = %s' % (state, action)
             s_prime = self.takeAction(state, action, index)
             state = s_prime
 
         ownedStocks, maxStocksToBuy, prediction = state
         return (ownedStocks + maxStocksToBuy) * self.getPrice(endIndex) - self.InitialMaxStocksToBuy * self.getPrice(startIndex)
-    
