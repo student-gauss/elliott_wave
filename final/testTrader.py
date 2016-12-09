@@ -10,22 +10,22 @@ from predictor import CheatPredictor, SimpleNNPredictor
 from trader import RotQTrader
 
 Data = [
-    ('dj', None, None),
-    ('gdx', None, None),
-    ('qcom', None, None),
-    ('rut', None, None),
-    ('wmt', None, None),
-    ('hd', None, None),
-    ('low', None, None),
-    ('tgt', None, None),
-    ('cost', None, None),
-    ('nke', None, None),
-    ('ko', None, None),
-    ('xom', None, None),
-    ('cvx', None, None),
-    ('cop', None, None),
-    ('bp', None, None),
-    ('ibm', None, None),
+    # ('dj', None, None),
+    # ('gdx', None, None),
+    # ('qcom', None, None),
+    # ('rut', None, None),
+    # ('wmt', None, None),
+    # ('hd', None, None),
+    # ('low', None, None),
+    # ('tgt', None, None),
+    # ('cost', None, None),
+    # ('nke', None, None),
+    # ('ko', None, None),
+    # ('xom', None, None),
+    # ('cvx', None, None),
+    # ('cop', None, None),
+    # ('bp', None, None),
+    # ('ibm', None, None),
     ('aapl', None, None),
 ]
 
@@ -77,7 +77,8 @@ def trainTrader(label, trader, maxIndex):
         trader.train(startIndex, endIndex)
 
 def test():
-    stocks = [1, 2, 3, 4, 3, 2]
+#    stocks = [1, 2, 3, 4, 3, 2]
+    stocks = [1, 2, 3, 2, 1, 2, 3]
     
     def getPrice(index):
         if index < 0:
@@ -91,9 +92,10 @@ def test():
     trainPredictor('test', predictor, len(stocks))
 
     trader = RotQTrader(predictor, getPrice)
-    for i in range(100000):
+    trader.InitialMaxStocksToBuy = 2
+    for i in range(500):
         trader.train(0, len(stocks))
-
+        
     print 'Testing'
     gain = trader.test(0, len(stocks))
     print gain
@@ -128,5 +130,5 @@ def main():
         for trader in traders:
             gain = trader.test(len(stocks) - 365, len(stocks))
             print '%s gain: %f' % (key, gain)
-#main()
-test()
+main()
+# test()

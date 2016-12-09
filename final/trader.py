@@ -35,15 +35,19 @@ class RotQTrader(Trader):
             return 0
         
     def initState(self, index):
-        # Suppose we have budget to buy 10 stocks initially.
+        # Suppose we have budget to buy InitialMaxStocksToBuy stocks initially.
         return (0, self.InitialMaxStocksToBuy, self.getPrediction(index))
 
     def getActions(self, state):
         ownedStocks, maxStocksToBuy, _ = state
         return range(-ownedStocks, int(maxStocksToBuy) + 1)
 
+    def getQoptKey(self, state, action):
+        ownedStocks, maxStocksToBuy, prediction = state
+        return (ownedStocks, maxStocksToBuy, prediction, action)
+
     def getQopt(self, state, action):
-        return self.Qopt[(state, action)]
+        return self.Qopt[self.getQoptKey(state, action)]
     
     def getVoptAndAction(self, state):
         QoptAndActionList = []
@@ -55,16 +59,11 @@ class RotQTrader(Trader):
 
     def takeAction(self, state, action, index):
         ownedStocks, maxStocksToBuy, prediction = state
-        if action < 0:
-            # Sell stocks
-            budget = maxStocksToBuy * self.getPrice(index)
-            budget += -action * self.getPrice(index)
-            maxStocksToBuy = budget / self.getPrice(index + 1)
-            ownedStocks += action
-        elif action > 0:
-            # Buy stocks
-            maxStocksToBuy -= action
-            ownedStocks += action
+
+        budget = maxStocksToBuy * self.getPrice(index)
+        budget += -action * self.getPrice(index)
+        maxStocksToBuy = float(budget) / self.getPrice(index + 1)
+        ownedStocks += action
 
         # update prediction
         prediction = self.getPrediction(index + 1)
@@ -73,10 +72,14 @@ class RotQTrader(Trader):
 
     def update(self, state, action, reward, s_prime):
         Vopt, _ = self.getVoptAndAction(s_prime)
-        eta = 1 / (self.updateCount[(state, action)] + 1.0)
-        self.Qopt[(state, action)] -= eta * (self.Qopt[(state, action)] - (reward + self.Gamma * Vopt))
-                                             
-        self.updateCount[(state, action)] += 1
+        eta = 1 / (self.updateCount[self.getQoptKey(state, action)] + 1.0)
+
+        old = self.getQopt(state, action)
+        self.Qopt[self.getQoptKey(state, action)] -= eta * (self.getQopt(state, action) - (reward + self.Gamma * Vopt))
+
+#        print 'Update Qopt(%s): %s -> %s' % (self.getQoptKey(state, action), old, self.getQopt(state, action))
+        
+        self.updateCount[self.getQoptKey(state, action)] += 1
         
     def train(self, startIndex, endIndex):
         state = None
@@ -98,27 +101,24 @@ class RotQTrader(Trader):
 
             s_prime = self.takeAction(state, action, index)
 
-            if index + 1 == endIndex - 1:
-                ownedStocks, budget, _ = state
-                reward = self.getPrice(index + 1) * ownedStocks + budget
+            if index + 1 == endIndex:
+                ownedStocks, maxStocksToBuy, _ = state
+                reward = self.getPrice(index + 1) * (ownedStocks + maxStocksToBuy)
             else:
                 reward = 0
 
             self.update(state, action, reward, s_prime)
 
             state = s_prime
-            
+
     def test(self, startIndex, endIndex):
 
         stat = collections.defaultdict(int)
         for key, value in self.Qopt.iteritems():
-            state, action = key
-            ownedStocks, maxStocksToBuy, prediction = state
-            stat[prediction] += action
-            
+            ownedStocks, maxStocksToBuy, prediction, action = key
+            print 'ownedStocks: %4d, maxStocksToBuy: %4.2f, prediction: %2d, action: %2d -> %4.2f' % (ownedStocks, maxStocksToBuy, prediction, action, value)
 
         state = None
-        print stat
         for index in range(startIndex, endIndex):
             if state == None:
                 state = self.initState(index)
@@ -130,8 +130,8 @@ class RotQTrader(Trader):
 
             # pick optimal action
             _, action = self.getVoptAndAction(state)
-            print 'Pick optimal action. State = %s, action = %s' % (state, action)
             s_prime = self.takeAction(state, action, index)
+            print 'Pick optimal action from state = %s, action = %s, s_prime: %s' % (state, action, s_prime)
             state = s_prime
 
         ownedStocks, maxStocksToBuy, prediction = state
