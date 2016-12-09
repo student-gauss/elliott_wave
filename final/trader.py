@@ -56,6 +56,12 @@ class QTrader(Trader):
 
         return max(QoptAndActionList)
 
+    def getAssetValue(self, state, index):
+        ownedStocks, maxStocksToBuy, prediction = state
+        stockPrice = self.getPrice(index)
+
+        return (ownedStocks + maxStocksToBuy) * stockPrice
+        
     def takeAction(self, state, action, index):
         ownedStocks, maxStocksToBuy, prediction = state
 
@@ -67,14 +73,15 @@ class QTrader(Trader):
         # update prediction
         prediction = self.getPrediction(index + 1)
 
-        return (ownedStocks, maxStocksToBuy, prediction)
+        s_prime = (ownedStocks, maxStocksToBuy, prediction)
+        reward = self.getAssetValue(s_prime, index + 1) - self.getAssetValue(state, index)
+        return (s_prime, reward)
     
     def update(self, state, action, reward, s_prime):
         Vopt, _ = self.getVoptAndAction(s_prime)
         target = reward + self.Gamma * Vopt
         phiX = self.extractFeatures(state, action)
         X = np.array(phiX).reshape(1, -1)
-        print 'Learn: X=%s, target: %4.2f' % (state, target)
         self.regressor.partial_fit(X, [target])
 
     def train(self, startIndex, endIndex):
@@ -95,13 +102,7 @@ class QTrader(Trader):
                 # pick optimal action
                 _, action = self.getVoptAndAction(state)
 
-            s_prime = self.takeAction(state, action, index)
-
-            if index + 1 == endIndex:
-                ownedStocks, maxStocksToBuy, _ = state
-                reward = self.getPrice(index + 1) * (ownedStocks + maxStocksToBuy)
-            else:
-                reward = 0
+            s_prime, reward = self.takeAction(state, action, index)
 
             self.update(state, action, reward, s_prime)
 
@@ -120,8 +121,8 @@ class QTrader(Trader):
 
             # pick optimal action
             _, action = self.getVoptAndAction(state)
-            s_prime = self.takeAction(state, action, index)
-            print 'Pick optimal action from state = %s, action = %s, s_prime: %s' % (state, action, s_prime)
+            s_prime, reward = self.takeAction(state, action, index)
+#            print 'Pick optimal action from state = %s, action = %s, reward = %4.2f s_prime: %s' % (state, action, reward, s_prime)
             state = s_prime
 
         ownedStocks, maxStocksToBuy, prediction = state
@@ -161,7 +162,7 @@ class RoteQTrader(Trader):
 
     def getQoptKey(self, state, action):
         ownedStocks, maxStocksToBuy, prediction = state
-        return (ownedStocks, maxStocksToBuy, prediction, action)
+        return (ownedStocks, int(maxStocksToBuy), prediction, action)
 
     def getQopt(self, state, action):
         return self.Qopt[self.getQoptKey(state, action)]
@@ -174,6 +175,12 @@ class RoteQTrader(Trader):
 
         return max(QoptAndActionList)
 
+    def getAssetValue(self, state, index):
+        ownedStocks, maxStocksToBuy, prediction = state
+        stockPrice = self.getPrice(index)
+
+        return (ownedStocks + maxStocksToBuy) * stockPrice
+        
     def takeAction(self, state, action, index):
         ownedStocks, maxStocksToBuy, prediction = state
 
@@ -185,7 +192,9 @@ class RoteQTrader(Trader):
         # update prediction
         prediction = self.getPrediction(index + 1)
 
-        return (ownedStocks, maxStocksToBuy, prediction)
+        s_prime = (ownedStocks, maxStocksToBuy, prediction)
+        reward = self.getAssetValue(s_prime, index + 1) - self.getAssetValue(state, index)
+        return (s_prime, reward)
 
     def update(self, state, action, reward, s_prime):
         Vopt, _ = self.getVoptAndAction(s_prime)
@@ -216,13 +225,7 @@ class RoteQTrader(Trader):
                 # pick optimal action
                 _, action = self.getVoptAndAction(state)
 
-            s_prime = self.takeAction(state, action, index)
-
-            if index + 1 == endIndex:
-                ownedStocks, maxStocksToBuy, _ = state
-                reward = self.getPrice(index + 1) * (ownedStocks + maxStocksToBuy)
-            else:
-                reward = 0
+            s_prime, reward  = self.takeAction(state, action, index)
 
             self.update(state, action, reward, s_prime)
 
@@ -233,7 +236,7 @@ class RoteQTrader(Trader):
         stat = collections.defaultdict(int)
         for key, value in self.Qopt.iteritems():
             ownedStocks, maxStocksToBuy, prediction, action = key
-            print 'ownedStocks: %4d, maxStocksToBuy: %4.2f, prediction: %2d, action: %2d -> %4.2f' % (ownedStocks, maxStocksToBuy, prediction, action, value)
+#            print 'ownedStocks: %4d, maxStocksToBuy: %4.2f, prediction: %2d, action: %2d -> %4.2f' % (ownedStocks, maxStocksToBuy, prediction, action, value)
 
         state = None
         for index in range(startIndex, endIndex):
@@ -247,8 +250,8 @@ class RoteQTrader(Trader):
 
             # pick optimal action
             _, action = self.getVoptAndAction(state)
-            s_prime = self.takeAction(state, action, index)
-            print 'Pick optimal action from state = %s, action = %s, s_prime: %s' % (state, action, s_prime)
+            s_prime, reward = self.takeAction(state, action, index)
+#            print 'Pick optimal action from state = %s, action = %s, reward = %4.2f, s_prime: %s' % (state, action, reward, s_prime)
             state = s_prime
 
         ownedStocks, maxStocksToBuy, prediction = state
