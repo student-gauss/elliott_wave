@@ -7,7 +7,8 @@ import random
 import itertools
 import matplotlib.pyplot as plt
 from predictor import CheatPredictor, SimpleNNPredictor
-from trader import RotQTrader
+from trader import RoteQTrader
+from trader import QTrader
 
 Data = [
     # ('dj', None, None),
@@ -70,15 +71,15 @@ def trainPredictor(label, predictor, maxIndex):
         predictor.train(phiX, [getPriceChange(currentPrice, predictor.getPrice(index + delta)) for delta in predictor.predictingDelta])
 
 def trainTrader(label, trader, maxIndex):
-    for i in range(10):
+    for i in range(1000):
         startIndex = random.choice(range(0, maxIndex))
-        endIndex = min(startIndex + 365, maxIndex)
+        endIndex = min(startIndex + 30, maxIndex)
         
         trader.train(startIndex, endIndex)
 
 def test():
 #    stocks = [1, 2, 3, 4, 3, 2]
-    stocks = [1, 2, 3, 2, 1, 2, 3]
+    stocks = [3,2,1]
     
     def getPrice(index):
         if index < 0:
@@ -91,7 +92,7 @@ def test():
     predictor.predictingDelta = [1, 2, 3]
     trainPredictor('test', predictor, len(stocks))
 
-    trader = RotQTrader(predictor, getPrice)
+    trader = QTrader(predictor, getPrice)
     trader.InitialMaxStocksToBuy = 2
     for i in range(500):
         trader.train(0, len(stocks))
@@ -122,7 +123,7 @@ def main():
             # We learn from the first day up to one year ago.
             trainPredictor(key, predictor, len(stocks) - 365)
 
-        traders = [RotQTrader(predictors[0], getPrice)]
+        traders = [QTrader(predictors[0], getPrice)]
         for trader in traders:
             # We learn from the first day up to one year ago.
             trainTrader(key, trader, len(stocks) - 365)
@@ -130,5 +131,5 @@ def main():
         for trader in traders:
             gain = trader.test(len(stocks) - 365, len(stocks))
             print '%s gain: %f' % (key, gain)
-main()
-# test()
+# main()
+test()
