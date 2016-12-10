@@ -8,7 +8,7 @@ class Predictor:
     def __init__(self, getPrice):
         # The predictor predicts a price 1, 7, 30, and 90 days later.
 #        self.predictingDelta = [1, 7, 30, 90]
-        self.predictingDelta = [1, 2]
+        self.predictingDelta = [1, 2, 3]
         self.getPrice = getPrice
     
     def extractFeatures(self, dateIndex): raise NotImplementedError('Override me')

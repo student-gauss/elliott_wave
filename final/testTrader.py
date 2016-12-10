@@ -11,22 +11,22 @@ from trader import RoteQTrader
 from trader import QTrader
 
 Data = [
-    ('dj', None, None),
-    ('gdx', None, None),
-    ('qcom', None, None),
-    ('rut', None, None),
-    ('wmt', None, None),
-    ('hd', None, None),
-    ('low', None, None),
-    ('tgt', None, None),
-    ('cost', None, None),
-    ('nke', None, None),
-    ('ko', None, None),
-    ('xom', None, None),
-    ('cvx', None, None),
-    ('cop', None, None),
-    ('bp', None, None),
-    ('ibm', None, None),
+    # ('dj', None, None),
+    # ('gdx', None, None),
+    # ('qcom', None, None),
+    # ('rut', None, None),
+    # ('wmt', None, None),
+    # ('hd', None, None),
+    # ('low', None, None),
+    # ('tgt', None, None),
+    # ('cost', None, None),
+    # ('nke', None, None),
+    # ('ko', None, None),
+    # ('xom', None, None),
+    # ('cvx', None, None),
+    # ('cop', None, None),
+    # ('bp', None, None),
+    # ('ibm', None, None),
     ('aapl', None, None),
 ]
 
@@ -71,7 +71,7 @@ def trainPredictor(label, predictor, maxIndex):
         predictor.train(phiX, [getPriceChange(currentPrice, predictor.getPrice(index + delta)) for delta in predictor.predictingDelta])
 
 def trainTrader(label, trader, maxIndex):
-    for i in range(1000):
+    for i in range(100):
         startIndex = random.choice(range(0, maxIndex))
         endIndex = min(startIndex + 30, maxIndex)
         
@@ -130,6 +130,6 @@ def main():
 
         for trader in traders:
             gain = trader.test(len(stocks) - 365, len(stocks))
-            print '%s gain: %f' % (key, gain)
+            print '%s: %f' % (key, gain)
 main()
 # test()
