@@ -24,7 +24,8 @@ class QTrader(Trader):
         self.Epsilon = 0.9
         self.Gamma = 0.9
         self.InitialMaxStocksToBuy = 10.0
-        self.regressor = MLPRegressor(hidden_layer_sizes=(2,), activation='tanh', solver='sgd', learning_rate='invscaling')
+        self.weights = np.zeros(2)
+        self.Eta = 0.05
         self.hasFitted = False
         self.statPrediction = []
         self.statAction = []
@@ -52,22 +53,20 @@ class QTrader(Trader):
         normalizedAsset = float(ownedStocks) / (ownedStocks + maxStocksToBuy)
         normalizedAction = float(action) / self.InitialMaxStocksToBuy
         
-        return [normalizedAsset, normalizedAction, prediction]
-    
+#        return np.array([normalizedAsset, normalizedAction, prediction])
+        return np.array([normalizedAsset, normalizedAction * prediction ])
+
+    def getQopt(self, state, action):
+        phiX = self.extractFeatures(state, action)
+        Qopt = np.dot(phiX, self.weights)
+        return Qopt
+        
     def getVoptAndAction(self, state):
         QoptAndActionList = []
         for action in self.getActions(state):
-            phiX = self.extractFeatures(state, action)
-            X = np.array(phiX).reshape(1, -1)
-
-            if self.hasFitted:
-                Qopt = self.regressor.predict(X)[0]
-            else:
-                Qopt = 0.0;
-
+            Qopt = self.getQopt(state, action)
             QoptAndActionList += [(Qopt, action)]
 
-        print QoptAndActionList
         return max(QoptAndActionList)
 
     def getAssetValue(self, state, index):
@@ -94,14 +93,13 @@ class QTrader(Trader):
         Vopt, _ = self.getVoptAndAction(s_prime)
         target = reward + self.Gamma * Vopt
         phiX = self.extractFeatures(state, action)
-        X = np.array(phiX).reshape(1, -1)
 
-        self.regressor.partial_fit(X, [target])
-        self.hasFitted = True
+        self.weights = self.weights - self.Eta * (self.getQopt(state, action) - (reward + self.Gamma * Vopt)) * phiX
 
         self.statPrediction += [state[2]]
         self.statAction += [action]
         self.statQopt += [target]
+#        print self.weights
 
     def train(self, startIndex, endIndex):
         state = None
@@ -141,7 +139,7 @@ class QTrader(Trader):
             # pick optimal action
             _, action = self.getVoptAndAction(state)
             s_prime, reward = self.takeAction(state, action, index)
-            print 'Pick optimal action from state = %s, action = %s, reward = %4.2f s_prime: %s' % (state, action, reward, s_prime)
+#            print 'Pick optimal action from state = %s, action = %s, reward = %4.2f s_prime: %s' % (state, action, reward, s_prime)
             state = s_prime
 
         fig = plt.figure()

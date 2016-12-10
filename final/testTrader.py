@@ -11,22 +11,22 @@ from trader import RoteQTrader
 from trader import QTrader
 
 Data = [
-    # ('dj', None, None),
-    # ('gdx', None, None),
-    # ('qcom', None, None),
-    # ('rut', None, None),
-    # ('wmt', None, None),
-    # ('hd', None, None),
-    # ('low', None, None),
-    # ('tgt', None, None),
-    # ('cost', None, None),
-    # ('nke', None, None),
-    # ('ko', None, None),
-    # ('xom', None, None),
-    # ('cvx', None, None),
-    # ('cop', None, None),
-    # ('bp', None, None),
-    # ('ibm', None, None),
+    ('dj', None, None),
+    ('gdx', None, None),
+    ('qcom', None, None),
+    ('rut', None, None),
+    ('wmt', None, None),
+    ('hd', None, None),
+    ('low', None, None),
+    ('tgt', None, None),
+    ('cost', None, None),
+    ('nke', None, None),
+    ('ko', None, None),
+    ('xom', None, None),
+    ('cvx', None, None),
+    ('cop', None, None),
+    ('bp', None, None),
+    ('ibm', None, None),
     ('aapl', None, None),
 ]
 
@@ -94,7 +94,7 @@ def test():
 
     trader = QTrader(predictor, getPrice)
     trader.InitialMaxStocksToBuy = 2
-    for i in range(50):
+    for i in range(500):
         trader.train(0, len(stocks))
         
     print 'Testing'
@@ -131,5 +131,5 @@ def main():
         for trader in traders:
             gain = trader.test(len(stocks) - 365, len(stocks))
             print '%s: %f' % (key, gain)
-# main()
-test()
+main()
+# test()
