@@ -92,9 +92,9 @@ def test():
     predictor.predictingDelta = [1, 2, 3]
     trainPredictor('test', predictor, len(stocks))
 
-    trader = RoteQTrader(predictor, getPrice)
+    trader = QTrader(predictor, getPrice)
     trader.InitialMaxStocksToBuy = 2
-    for i in range(5000):
+    for i in range(50):
         trader.train(0, len(stocks))
         
     print 'Testing'
@@ -131,5 +131,5 @@ def main():
         for trader in traders:
             gain = trader.test(len(stocks) - 365, len(stocks))
             print '%s: %f' % (key, gain)
-main()
-# test()
+# main()
+test()

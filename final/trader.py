@@ -2,6 +2,8 @@ import collections
 import numpy as np
 import random
 from sklearn.neural_network import MLPRegressor
+import matplotlib.pyplot as plt
+from mpl_toolkits.mplot3d import Axes3D
 
 class Trader:
     def __init__(self, predictor, getPrice):
@@ -11,15 +13,22 @@ class Trader:
     def train(self, startIndex, endIndex):raise NotImplementedError('Override me')
     def test(self, startIndex, endIndex):raise NotImplementedError('Override me')
 
+def stateStr(state):
+    ownedStocks, maxStocksToBuy, prediction = state
+    return '%4.2f %4.2f %5.2f' % (ownedStocks, maxStocksToBuy, prediction)
+    
 class QTrader(Trader):
     def __init__(self, predictor, getPrice):
         Trader.__init__(self, predictor, getPrice)
         
         self.Epsilon = 0.9
-        self.Gamma = 1.0
+        self.Gamma = 0.9
         self.InitialMaxStocksToBuy = 10.0
         self.regressor = MLPRegressor(hidden_layer_sizes=(2,), activation='tanh', solver='sgd', learning_rate='invscaling')
         self.hasFitted = False
+        self.statPrediction = []
+        self.statAction = []
+        self.statQopt = []
     
     def getPrediction(self, index):
         phiX = self.predictor.extractFeatures(index)
@@ -56,9 +65,9 @@ class QTrader(Trader):
             else:
                 Qopt = 0.0;
 
-            print action, Qopt
             QoptAndActionList += [(Qopt, action)]
 
+        print QoptAndActionList
         return max(QoptAndActionList)
 
     def getAssetValue(self, state, index):
@@ -89,6 +98,10 @@ class QTrader(Trader):
 
         self.regressor.partial_fit(X, [target])
         self.hasFitted = True
+
+        self.statPrediction += [state[2]]
+        self.statAction += [action]
+        self.statQopt += [target]
 
     def train(self, startIndex, endIndex):
         state = None
@@ -131,6 +144,11 @@ class QTrader(Trader):
             print 'Pick optimal action from state = %s, action = %s, reward = %4.2f s_prime: %s' % (state, action, reward, s_prime)
             state = s_prime
 
+        fig = plt.figure()
+        ax = fig.gca(projection='3d')
+#        ax.scatter(self.statPrediction, self.statAction, self.statQopt)
+#        plt.show()
+        
         ownedStocks, maxStocksToBuy, prediction = state
         return (ownedStocks + maxStocksToBuy) * self.getPrice(endIndex) - self.InitialMaxStocksToBuy * self.getPrice(startIndex)
 
