@@ -118,7 +118,8 @@ def main():
                 return stocks[len(stocks) - 1]
             return stocks[index]
 
-        predictors = [CheatPredictor(getPrice)]
+        predictors = [SimpleNNPredictor(getPrice)]
+#        predictors = [CheatPredictor(getPrice)]
         for predictor in predictors:
             # We learn from the first day up to one year ago.
             trainPredictor(key, predictor, len(stocks) - 365)

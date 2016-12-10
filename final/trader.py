@@ -33,10 +33,10 @@ class QTrader(Trader):
     
     def getPrediction(self, index):
         phiX = self.predictor.extractFeatures(index)
-        futurePrices = [0]
-        futurePrices += self.predictor.predict(phiX)
+        futurePrices = self.predictor.predict(phiX)
+        predictingDelta = self.predictor.predictingDelta
         
-        m, _ = np.polyfit([0] + self.predictor.predictingDelta, futurePrices, 1)
+        m, _ = np.polyfit(predictingDelta, futurePrices, 1)
         return m
 
     def initState(self, index):

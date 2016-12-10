@@ -8,7 +8,7 @@ class Predictor:
     def __init__(self, getPrice):
         # The predictor predicts a price 1, 7, 30, and 90 days later.
 #        self.predictingDelta = [1, 7, 30, 90]
-        self.predictingDelta = [1, 2, 3]
+        self.predictingDelta = np.array([0, 1, 2, 3])
         self.getPrice = getPrice
     
     def extractFeatures(self, dateIndex): raise NotImplementedError('Override me')
@@ -55,4 +55,5 @@ class SimpleNNPredictor(Predictor):
 
     def predict(self, phiX):
         X = np.array(phiX).reshape(1, -1)
-        return self.regressor.predict(X)[0]
+        result = self.regressor.predict(X)[0]
+        return result
