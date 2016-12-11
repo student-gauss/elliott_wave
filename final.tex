@@ -1,0 +1,211 @@
+
+\documentclass[12pt]{article}
+\usepackage{fullpage,enumitem,amsmath,amssymb,graphicx,bm,listings,algpseudocode,hyperref,url}
+\newcommand{\vect}[1]{\boldsymbol{#1}}
+
+\lstdefinestyle{custom}{
+  basicstyle=\footnotesize\ttfamily,
+  language=Python,
+}
+\begin{document}
+
+\title{Stock forecast system with Elliott Wave pattern recognition and adaptive trading strategy}
+\author{Motonari ITO}
+
+\maketitle
+\begin{center}
+\begin{tabular}{rl}
+SUNet ID: & motonari \\
+Collaborators: & Sundararaman Shiva
+\end{tabular}
+\end{center}
+
+\begin{abstract}
+  We build a system to advise the best trading strategy. The system
+  consists of two components. One is stock price predictors based on
+  reflex models. The other is a trading strategy optimizer based on a
+  state model. We also build a test tool to evaluate the performance
+  of each component.
+\end{abstract}
+
+\section{Introduction}
+
+Stock forecast has been studied and practiced with various degree of
+success. The technical analysis is a methodology based on the
+historical stock market prices \cite{wiki:technical_analysis}. The
+fundamental analysis tries to predict based on the business's
+financial statement \cite{wiki:fundamental_analysis}. Data mining over
+the Internet with sentiment analysis also became popular recently
+\cite{web:data_mining_analysis}.
+
+Elliott Wave Principle (EWP) is a classical technical analysis method
+\cite{frost1981elliott, web:study_of_cycles}. It is a hypothesis that stock market price
+can be modeled as a sequence of waves which shapes follow some defined
+rules. EWP suggests we can predict the future market price more
+accurately than a random chance by recognizing the wave pattern.  This
+is distinct from other stock price prediction methods in that it
+relies solely on the historical price changes and doesn't use external
+information such as market sentiment or industrial news. 
+
+EWP, has been criticized for the poor performance
+\cite{aronson2007evidence-based}. Notably, for a given stock
+historical data, the rules yields many different interpretation of the
+wave forms. This uncertainty makes the future prediction hard, if not
+impossible, while one can claim the accuracy of the theory
+\emph{after} the fact. In a sense, EWP is so powerful and complex
+model that one cannot avoid over-fitting.
+
+We, however, believe the essence of EWP is still valid; future price
+is influenced by past price pattern. Intuitively, some often predict
+the price to go up if the past price has strong upward trend. Others
+may predict downward trend if the past price shows inverted-V
+shape. While such prediction may not be an inherent property of the
+stock market, the fact that many people believe that way affect the
+market. Therefore, it is probable that a reflex based machine learning
+algorithm can predict a future price based on the past prices.
+
+TODO: talk about sentiment analysis based approach
+
+Given that we have a sensible predictor, it is still an open question
+when and how to trade stocks to optimize the asset because the
+predictor is inherently imperfect. For example, it may not be smart to
+sell the entire stocks immediately just because a predictor says price
+would go down, because the prediction could be wrong. The trading
+decision should be educated by the actual performance of predictors.
+
+Our approach is to use a state based learning algorithm to find the
+optimal trading strategy. Intuitively, as it runs the predictors on
+the historical data, the trader will learn the peculiarity of each
+predictor. 
+
+
+\section{System}
+
+\subsection{Overview}
+
+The system consists of two parts: predictors and traders. A predictor
+forecasts future prices of a particular stock such as AAPL. A trader
+learns the optimal trading strategy (i.e. when to buy/sell how much
+stocks) based on predictors and the actual stock prices.
+
+There are three predictors.
+
+\begin{description}
+  \item[SimpleNNPredictor] It uses a multilayer perceptron
+    algorithm. The input is the prior stock prices and the output is a
+    set of future prices.
+  \item[LinearPredictor] It uses a linear regression with stochastic
+    gradient descent algorithm. The input is the prior stock prices
+    and the output is a set of future prices.
+  \item[SentimentPredictor] It uses New York Times Community API
+    \cite{web:nytimes_community_api}to retrieve the customer comments
+    on each news article. Then, it uses Stanford Core NLP
+    \cite{manning-EtAl:2014:P14-5} to find the sentiment of each
+    comments.
+\end{description}
+
+In addition, we have \verb|CheatPredictor| which returns the future
+prices based on the actual data. It's used for evaluating the
+performance of trader components.
+
+There are two traders.
+
+\begin{description}
+  \item[RoteQTrader] It uses Q-Learning algorithm without function
+    approximation; uses simplified state definition instead. 
+
+  \item [QTrader] It uses Q-Learning algorithm with a function
+    approximation.
+\end{description}
+
+A trader receives predictors output and use them as a state. 
+
+\subsection{Predictors}
+
+
+
+\subsection{Trader}
+
+
+If we had a perfect predictor, the optimal strategy is to buy before
+the stock price goes up and to sell before it goes down. However, no
+predictor is perfect.
+
+Our goal is to maximize our asset after the sequence of
+trades. Suppose the last day index is $n$, this is defined as follows.
+
+\[
+AssetValue = p_n(O_n + C_n)
+\]
+, where $p_n$ is the stock price of the last day, $O_n$ is the number
+of stocks owned at the last day, and $C_n$ is the maximum number of
+stocks we could buy with our current cash in the pocket at the last
+day.
+
+The trader finds the optimal strategy to meet the goal.
+
+\subsubsection{Model}
+
+We model it as MDP where we don't know the transition function.
+
+\begin{description}
+\item[State] The state consists of these numbers. 
+  \begin{itemize}
+  \item $O_k$, the number of stocks owned.
+  \item $C_k$, the number of stocks (floating number) we can buy with
+    our current cash amount. In other words, it is $CashAmount/P_{k}$
+    where $P_k$ is the current stock price.
+    \item $m_k$, the predicted slope by performing a least square
+      polynomial fit over the predicted future price changes.
+    \item $residual_k$, the sum of residuals of the predicted slope
+      above.
+  \end{itemize}
+
+\item[Initial State] Before running MDP, we initialize the state as follows.
+  \begin{itemize}
+  \item $O_0 = 0$
+  \item $C_0 = 10$
+  \item $m_0, residuals_0$ are initialized by the predictor based on the first day.
+  \end{itemize}
+  
+\item[Action] The action is an integer in the range: $[-O_k,C_k]$. The
+  negative value means to sell owned stocks for that amount, and the
+  positive value means to buy stocks for that amount.
+
+\item[Transition] On taking a action, the state moves to the next
+  day. Note that the system doesn't know the next state beyond today.
+
+\item[Reward] The reward is the difference of asset value before and
+  after the state transition. 
+  
+  \[
+  Reward_k = P_k(O_{k} + C_{k}) - P_{k-1}(O_{k-1} + C_{k-1})
+  \]
+  
+  Intuitively, we want to have more stocks when the stock price is
+  high and we want to have more cash when the stock price is low.
+\end{description}
+
+\subsubsection{Algorithm}
+
+We use Q-learning with a function approximation and epsilon-greedy
+learning.
+
+
+\section{Performance}
+
+\subsection{Predictors}
+\subsection{Trader}
+
+\section{Comparison to Baseline and Oracle}
+
+\section{Conclusion}
+
+
+\bibliographystyle{plain}
+\bibliography{final,StanfordCoreNlp2014}
+
+\end{document}
+
+
+

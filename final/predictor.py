@@ -1,4 +1,5 @@
 from sklearn.neural_network import MLPRegressor
+from sklearn.linear_model import SGDRegressor
 import numpy as np
 
 def getPriceChange(oldPrice, newPrice):
@@ -7,8 +8,8 @@ def getPriceChange(oldPrice, newPrice):
 class Predictor:
     def __init__(self, getPrice):
         # The predictor predicts a price 1, 7, 30, and 90 days later.
-#        self.predictingDelta = [1, 7, 30, 90]
-        self.predictingDelta = np.array([0, 1, 2, 3])
+        self.predictingDelta = [0, 1, 7]
+#        self.predictingDelta = np.array([0, 1, 2, 3])
         self.getPrice = getPrice
     
     def extractFeatures(self, dateIndex): raise NotImplementedError('Override me')
@@ -37,7 +38,7 @@ class SimpleNNPredictor(Predictor):
     def __init__(self, getPrice):
         Predictor.__init__(self, getPrice)
         self.LookBack = [87, 54, 33, 21, 13, 8, 5, 3, 2, 1]
-        self.regressor = MLPRegressor(hidden_layer_sizes=(3,), activation='tanh', solver='sgd', learning_rate='invscaling')
+        self.regressor = MLPRegressor(hidden_layer_sizes=(10,10,10), activation='tanh', solver='sgd', learning_rate='invscaling')
 
     def extractFeatures(self, dateIndex):
         history = []
@@ -50,10 +51,46 @@ class SimpleNNPredictor(Predictor):
     def train(self, phiX, y):
         X = np.array(phiX).reshape(1, -1)
         Y = np.array(y).reshape(1, -1)
-
         self.regressor.partial_fit(X, Y)
 
     def predict(self, phiX):
         X = np.array(phiX).reshape(1, -1)
         result = self.regressor.predict(X)[0]
         return result
+
+class LinearPredictor(Predictor):
+    def __init__(self, getPrice):
+        Predictor.__init__(self, getPrice)
+        self.LookBack = [87, 54, 33, 21, 13, 8, 5, 3, 2, 1]
+        self.regressor = SGDRegressor(alpha=0.0001, average=False,
+                                      epsilon=0.1, eta0=0.01,
+                                      fit_intercept=True,
+                                      l1_ratio=0.15,
+                                      learning_rate='invscaling',
+                                      loss='squared_loss',
+                                      penalty='l2', power_t=0.25,
+                                      random_state=None, shuffle=True,
+                                      verbose=0, warm_start=False)
+
+    def extractFeatures(self, dateIndex):
+        history = []
+        currentPrice = self.getPrice(dateIndex)
+        for xi in range(len(self.LookBack)):
+            change = getPriceChange(self.getPrice(dateIndex - xi), currentPrice)
+            history += [change, change ** 2, change ** 3]
+            
+        return history
+
+    def train(self, phiX, y):
+        for index, delta in enumerate(self.predictingDelta):
+            Y = np.array([y[index]])
+            X = np.array(phiX + [delta]).reshape(1, -1)
+            self.regressor.partial_fit(X, Y)
+
+    def predict(self, phiX):
+        result = []
+        for index, delta in enumerate(self.predictingDelta):
+            X = np.array(phiX + [delta]).reshape(1, -1)
+            result += [self.regressor.predict(X)[0]]
+        return result
+    

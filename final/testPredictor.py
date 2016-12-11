@@ -6,25 +6,25 @@ import collections
 import random
 import itertools
 import matplotlib.pyplot as plt
-from predictor import CheatPredictor, SimpleNNPredictor
+from predictor import CheatPredictor, SimpleNNPredictor, LinearPredictor
 
 Data = [
-    ('dj', None, None),
-    ('gdx', None, None),
-    ('qcom', None, None),
-    ('rut', None, None),
-    ('wmt', None, None),
-    ('hd', None, None),
-    ('low', None, None),
-    ('tgt', None, None),
-    ('cost', None, None),
-    ('nke', None, None),
-    ('ko', None, None),
-    ('xom', None, None),
-    ('cvx', None, None),
-    ('cop', None, None),
-    ('bp', None, None),
-    ('ibm', None, None),
+    # ('dj', None, None),
+    # ('gdx', None, None),
+    # ('qcom', None, None),
+    # ('rut', None, None),
+    # ('wmt', None, None),
+    # ('hd', None, None),
+    # ('low', None, None),
+    # ('tgt', None, None),
+    # ('cost', None, None),
+    # ('nke', None, None),
+    # ('ko', None, None),
+    # ('xom', None, None),
+    # ('cvx', None, None),
+    # ('cop', None, None),
+    # ('bp', None, None),
+    # ('ibm', None, None),
     ('aapl', None, None),
 ]
 
@@ -64,10 +64,11 @@ def getPriceChange(oldPrice, newPrice):
 
 def testPredictor(label, predictor, maxIndex):
     # We learn from the first day up to one year ago.
-    for index in range(maxIndex - 365):
-        phiX = predictor.extractFeatures(index)
-        currentPrice = predictor.getPrice(index)
-        predictor.train(phiX, [getPriceChange(currentPrice, predictor.getPrice(index + delta)) for delta in predictor.predictingDelta])
+    for i in range(10):
+        for index in range(maxIndex - 365):
+            phiX = predictor.extractFeatures(index)
+            currentPrice = predictor.getPrice(index)
+            predictor.train(phiX, [getPriceChange(currentPrice, predictor.getPrice(index + delta)) for delta in predictor.predictingDelta])
 
     # And test the learned weight performance by exercising in the
     # last one year.
@@ -125,7 +126,7 @@ def main():
                 return stocks[len(stocks) - 1]
             return stocks[index]
 
-        predictors = [CheatPredictor(getPrice), SimpleNNPredictor(getPrice)]
+        predictors = [LinearPredictor(getPrice)]
         for predictor in predictors:
             testPredictor(key, predictor, len(stocks))
 

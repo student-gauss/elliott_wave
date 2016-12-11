@@ -1,1 +1,1 @@
-Stock forcast with Elliott Wave pattern recognition
+Stock forecast system with Elliott Wave pattern recognition and adaptive trading strategy

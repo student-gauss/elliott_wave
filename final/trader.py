@@ -24,7 +24,7 @@ class QTrader(Trader):
         self.Epsilon = 0.9
         self.Gamma = 0.9
         self.InitialMaxStocksToBuy = 10.0
-        self.weights = np.zeros(2)
+        self.weights = np.zeros(3)
         self.Eta = 0.05
         self.hasFitted = False
         self.statPrediction = []
@@ -36,8 +36,8 @@ class QTrader(Trader):
         futurePrices = self.predictor.predict(phiX)
         predictingDelta = self.predictor.predictingDelta
         
-        m, _ = np.polyfit(predictingDelta, futurePrices, 1)
-        return m
+        shape, residual, _, _, _ = np.polyfit(predictingDelta, futurePrices, 1, full=True)
+        return (shape[0], residual[0])
 
     def initState(self, index):
         # Suppose we have budget to buy InitialMaxStocksToBuy stocks initially.
@@ -49,12 +49,12 @@ class QTrader(Trader):
 
     def extractFeatures(self, state, action):
         ownedStocks, maxStocksToBuy, prediction = state
+        shape, residual = prediction
         
         normalizedAsset = float(ownedStocks) / (ownedStocks + maxStocksToBuy)
         normalizedAction = float(action) / self.InitialMaxStocksToBuy
-        
-#        return np.array([normalizedAsset, normalizedAction, prediction])
-        return np.array([normalizedAsset, normalizedAction * prediction ])
+#        return np.array([normalizedAsset, normalizedAction * shape, 10000000.0 / residual ])
+        return np.array([normalizedAsset, normalizedAction * shape, residual])
 
     def getQopt(self, state, action):
         phiX = self.extractFeatures(state, action)
@@ -70,13 +70,13 @@ class QTrader(Trader):
         return max(QoptAndActionList)
 
     def getAssetValue(self, state, index):
-        ownedStocks, maxStocksToBuy, prediction = state
+        ownedStocks, maxStocksToBuy, _ = state
         stockPrice = self.getPrice(index)
 
         return (ownedStocks + maxStocksToBuy) * stockPrice
         
     def takeAction(self, state, action, index):
-        ownedStocks, maxStocksToBuy, prediction = state
+        ownedStocks, maxStocksToBuy, _ = state
 
         budget = maxStocksToBuy * self.getPrice(index)
         budget += -action * self.getPrice(index)
@@ -93,7 +93,7 @@ class QTrader(Trader):
         Vopt, _ = self.getVoptAndAction(s_prime)
         target = reward + self.Gamma * Vopt
         phiX = self.extractFeatures(state, action)
-
+        
         self.weights = self.weights - self.Eta * (self.getQopt(state, action) - (reward + self.Gamma * Vopt)) * phiX
 
         self.statPrediction += [state[2]]
@@ -147,7 +147,7 @@ class QTrader(Trader):
 #        ax.scatter(self.statPrediction, self.statAction, self.statQopt)
 #        plt.show()
         
-        ownedStocks, maxStocksToBuy, prediction = state
+        ownedStocks, maxStocksToBuy, _ = state
         return (ownedStocks + maxStocksToBuy) * self.getPrice(endIndex) - self.InitialMaxStocksToBuy * self.getPrice(startIndex)
 
 
