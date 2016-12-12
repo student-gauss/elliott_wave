@@ -1,25 +1,23 @@
-import requests
 import json
 import numpy as np
 import time
+import os.path
 
 trends = {}
 trends['aapl'] = {'keywords': ['aapl', 'apple', 'iphone', 'ipad', 'mac', 'ipod', 'ios'], 'data': []}
 trends['ibm'] = {'keywords': ['ibm', 'watson', 'ginni', 'rometty'], 'data': []}
 
 print trends
-for date in np.arange('2010-01-01', '2010-11-11', dtype='datetime64[D]'):
-    success = False
-    while not success:
-        time.sleep(1)
-        payload = {'api-key': 'a62fe8576c644f34b6a6155e5095a158',
-                   'date': str(date)}
-        r = requests.get('http://api.nytimes.com/svc/community/v3/user-content/by-date.json', params=payload)
-        if r.status_code == 200:
-            success = True
-        print r
+for date in np.arange('2010-01-01', '2016-11-11', dtype='datetime64[D]'):
+    filename = 'nyt_comment_%s.json' % str(date)
+    if not os.path.isfile(filename):
+        continue
+
+    
+    with open(filename, 'r') as jsonFile:
+        j = json.load(jsonFile)
             
-    comments = r.json()['results']['comments']
+    comments = j['results']['comments']
     for comment in comments:
         commentBody = comment['commentBody']
         lowerCaseComment = commentBody.lower().split()
@@ -41,4 +39,4 @@ for date in np.arange('2010-01-01', '2010-11-11', dtype='datetime64[D]'):
 
 import json
 with open('trends.json', 'w') as outfile:
-    json.dump(trends, outfile)
+    json.dump(trends, outfile, indent=4)

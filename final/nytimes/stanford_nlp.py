@@ -2,22 +2,26 @@ import json
 from pycorenlp import StanfordCoreNLP
 nlp = StanfordCoreNLP('http://localhost:9000')
 
-with open('trends_test.json') as trends_file:    
+with open('trends.json') as trends_file:    
     trends = json.load(trends_file)
 
 for company in trends:
     data = trends[company]['data']
     for comment in data:
-        date = comment[0]
-        commentBody = str(''.join([i if ord(i) < 128 else ' ' for i in comment[1]]))
+        date = comment['date']
+        commentBody = str(''.join([i if ord(i) < 128 else ' ' for i in comment['body']]))
         res = nlp.annotate(commentBody,
                            properties={
                                'annotators': 'sentiment',
                                'outputFormat': 'json'
                            })
 
-        total = 0
+        total = 0.001
         score = 0
+        if type(res).__name__ != 'dict':
+            print type(res).__name__
+            continue
+
         for s in res["sentences"]:
              if s['sentiment'] == 'Positive':
                  score += float(s['sentimentValue'])
@@ -28,8 +32,8 @@ for company in trends:
              else:
                  total += float(s['sentimentValue'])
 
-        comment += [float(score) / total]
+        comment['sentiment'] = float(score) / total
 
 import json
 with open('trends_with_sentiment.json', 'w') as outfile:
-    json.dump(trends, outfile)
+    json.dump(trends, outfile, indent=4)

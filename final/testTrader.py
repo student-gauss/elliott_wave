@@ -73,7 +73,7 @@ def trainPredictor(label, predictor, maxIndex):
 def trainTrader(label, trader, maxIndex):
     for i in range(100):
         startIndex = random.choice(range(0, maxIndex))
-        endIndex = min(startIndex + 30, maxIndex)
+        endIndex = min(startIndex + 90, maxIndex)
         
         trader.train(startIndex, endIndex)
 

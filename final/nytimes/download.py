@@ -13,7 +13,7 @@ for date in np.arange('2012-03-19', '2016-11-11', dtype='datetime64[D]'):
         continue
     
     time.sleep(1)
-    payload = {'api-key': 'cfeabed2405a4cb1a435044899d8c61d',
+    payload = {'api-key': '0341df8da5964d7382b19595cf79fe37',
                'date': str(date)}
     r = requests.get('http://api.nytimes.com/svc/community/v3/user-content/by-date.json', params=payload)
     if r.status_code == 200:

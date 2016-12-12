@@ -1,6 +1,6 @@
-
-\documentclass[12pt]{article}
-\usepackage{fullpage,enumitem,amsmath,amssymb,graphicx,bm,listings,algpseudocode,hyperref,url}
+\documentclass[twocolumn,10pt]{asme2ej}
+% \usepackage{fullpage,enumitem,amsmath,amssymb,graphicx,bm,listings,algpseudocode,hyperref,url,multirow,caption}
+\usepackage{enumitem,amsmath,amssymb,graphicx,bm,listings,algpseudocode,hyperref,url,multirow,caption}
 \newcommand{\vect}[1]{\boldsymbol{#1}}
 
 \lstdefinestyle{custom}{
@@ -10,15 +10,13 @@
 \begin{document}
 
 \title{Stock forecast system with Elliott Wave pattern recognition and adaptive trading strategy}
-\author{Motonari ITO}
+\author{Motonari ITO
+  \affiliation{
+    SUNet ID: motonari
+    }
+}
 
 \maketitle
-\begin{center}
-\begin{tabular}{rl}
-SUNet ID: & motonari \\
-Collaborators: & Sundararaman Shiva
-\end{tabular}
-\end{center}
 
 \begin{abstract}
   We build a system to advise the best trading strategy. The system
@@ -78,67 +76,112 @@ optimal trading strategy. Intuitively, as it runs the predictors on
 the historical data, the trader will learn the peculiarity of each
 predictor. 
 
-
 \section{System}
 
 \subsection{Overview}
 
-The system consists of two parts: predictors and traders. A predictor
-forecasts future prices of a particular stock such as AAPL. A trader
-learns the optimal trading strategy (i.e. when to buy/sell how much
-stocks) based on predictors and the actual stock prices.
+The system consists of two parts: predictors and traders.
 
-There are three predictors.
+A predictor forecasts a future price of a particular stock based on
+various input data such as prior stock prices.
 
-\begin{description}
-  \item[SimpleNNPredictor] It uses a multilayer perceptron
-    algorithm. The input is the prior stock prices and the output is a
-    set of future prices.
-  \item[LinearPredictor] It uses a linear regression with stochastic
-    gradient descent algorithm. The input is the prior stock prices
-    and the output is a set of future prices.
-  \item[SentimentPredictor] It uses New York Times Community API
-    \cite{web:nytimes_community_api}to retrieve the customer comments
-    on each news article. Then, it uses Stanford Core NLP
-    \cite{manning-EtAl:2014:P14-5} to find the sentiment of each
-    comments.
-\end{description}
+A trader uses the prediction and learns the optimal trading strategy
+(i.e. when to buy/sell how much stocks).
 
-In addition, we have \verb|CheatPredictor| which returns the future
-prices based on the actual data. It's used for evaluating the
-performance of trader components.
-
-There are two traders.
-
-\begin{description}
-  \item[RoteQTrader] It uses Q-Learning algorithm without function
-    approximation; uses simplified state definition instead. 
-
-  \item [QTrader] It uses Q-Learning algorithm with a function
-    approximation.
-\end{description}
-
-A trader receives predictors output and use them as a state. 
+There are four predictors (SimpleNNPredictor, LinearPredictor,
+SentimentPredictor, and CheatPredictor) and one trader
+(QTrader). The trader uses weighted average of predictions.
 
 \subsection{Predictors}
 
+All the predictors take a hyper parameter $D$, which requests the
+predictor to predict the stock price change after $D$ days from the date.
 
+\subsubsection{SimpleNNPredictor}
+The predictor uses the multilayer perception implementation from
+scikit-learn \cite{web:scikit_learn}. It extract the feature by
+looking back the prior stock price.
+
+The look back date is defined as an array variable $b$:
+
+\[
+b \gets [87, 54, 33, 21, 13, 8, 5, 3, 2, 1]
+\]
+
+In the training phase, it looks back the stock prices and calculate
+the price changes $X$ compared to the current price, which is used as
+an input to the algorithm.
+
+\[
+X_i \gets \left\{\frac{p_i - p_{i - b_j}}{p_{i - b_j}} : j \in |b|\right\}
+\]
+
+The target value is is the actual stock price change for the given
+future date, \verb|np.datetime64(today)+D|.
+
+\subsubsection{LinearPredictor}
+The predictor is same as SimpleNNPredictor except that the underlying
+algorithm uses a linear regression with stochastic gradient descent,
+also from scikit-learn \cite{web:scikit_learn}.
+
+\subsubsection{SentimentPredictor}
+
+The predictor uses New York Times Community API
+\cite{web:nytimes_community_api} to retrieve the customer comments of
+each news article from Jan 1, 2010 to Nov 10, 2016.
+
+Then, it uses Stanford Core NLP \cite{manning-EtAl:2014:P14-5} to find
+the sentiment. The algorithm returns a tuple of sentimentValue and
+sentiment for each sentence in the comment. For example, a very
+positive sentence may return (3, 'positive'). A weakly negative
+sentence would return (1, 'negative').
+
+We estimate the sentiment of the comment by averaging the sentiment
+values.
+
+\begin{verbatim}
+def comment_sentiment(comment):
+  total = 0
+  score = 0
+  for each sentence in comment:
+    if sentiment == 'positive':
+      score += sentimentValue
+      total += sentimentValue
+    elif sentiment == 'negative':
+      score -= sentimentValue
+      total += sentimentValue
+    else:
+      total += sentimentValue
+
+  return float(score) / total
+\end{verbatim}
+
+We take a comment which contains a related word to a stock symbol. For
+example, for \verb|aapl|, we pick a comment with words 'aapl',
+'apple', 'iphone', 'ipad', 'mac', 'ipod', or 'ios'.
+
+Then, for a given date, we look back the last 30 days of the sentiment
+for the stock and create a feature vector of size 30.
+
+We use a linear regression with stochastic gradient descent from
+scikit-learn \cite{web:scikit_learn} to train the predictor.The target
+value is is the actual stock price change for the given future date,
+\verb|np.datetime64(today)+D|.
 
 \subsection{Trader}
 
+If we had a perfect predictor, the optimal strategy is of course to
+buy before the stock price goes up and to sell before it goes
+down. However, no predictor is perfect.
 
-If we had a perfect predictor, the optimal strategy is to buy before
-the stock price goes up and to sell before it goes down. However, no
-predictor is perfect.
-
-Our goal is to maximize our asset after the sequence of
-trades. Suppose the last day index is $n$, this is defined as follows.
+Our goal is to maximize our asset value $U$ after the sequence of
+trades. Suppose the last day index is $n$, the asset value $U$ is defined:
 
 \[
-AssetValue = p_n(O_n + C_n)
+U = p_n(o_n + c_n),
 \]
-, where $p_n$ is the stock price of the last day, $O_n$ is the number
-of stocks owned at the last day, and $C_n$ is the maximum number of
+where $p_n$ is the stock price of the last day, $o_n$ is the number
+of stocks owned at the last day, and $c_n$ is the maximum number of
 stocks we could buy with our current cash in the pocket at the last
 day.
 
@@ -149,26 +192,29 @@ The trader finds the optimal strategy to meet the goal.
 We model it as MDP where we don't know the transition function.
 
 \begin{description}
-\item[State] The state consists of these numbers. 
+\item[State] For $i$-th day, the state is defined to have a tuple of
+  these values.
   \begin{itemize}
-  \item $O_k$, the number of stocks owned.
-  \item $C_k$, the number of stocks (floating number) we can buy with
-    our current cash amount. In other words, it is $CashAmount/P_{k}$
-    where $P_k$ is the current stock price.
-    \item $m_k$, the predicted slope by performing a least square
+  \item $o_i$, the number of stocks owned.
+  \item $c_i$, the number of stocks (floating number) we can buy with
+    our current cash amount. In other words, it is the cash amount
+    divided by the current stock price $p_i$.
+    \item $m_i$, the predicted slope by performing a least square
       polynomial fit over the predicted future price changes.
-    \item $residual_k$, the sum of residuals of the predicted slope
+    \item $r_i$, the sum of residuals of the predicted slope
       above.
   \end{itemize}
 
-\item[Initial State] Before running MDP, we initialize the state as follows.
+\item[Initial State] Before running MDP starting at day index $start$,
+  we initialize the state as follows.
   \begin{itemize}
-  \item $O_0 = 0$
-  \item $C_0 = 10$
-  \item $m_0, residuals_0$ are initialized by the predictor based on the first day.
+  \item $o_{start} = 0$
+  \item $o_{start} = 10$
+  \item $m_{start}$ and $r_{start}$ are initialized by the predictor based
+    on the first day.
   \end{itemize}
   
-\item[Action] The action is an integer in the range: $[-O_k,C_k]$. The
+\item[Action] The action is an integer in the range: $[-o_i,c_i]$. The
   negative value means to sell owned stocks for that amount, and the
   positive value means to buy stocks for that amount.
 
@@ -179,7 +225,7 @@ We model it as MDP where we don't know the transition function.
   after the state transition. 
   
   \[
-  Reward_k = P_k(O_{k} + C_{k}) - P_{k-1}(O_{k-1} + C_{k-1})
+  Reward = p_i(o_{i} + c_{i}) - p_{i-1}(o_{i-1} + c_{i-1})
   \]
   
   Intuitively, we want to have more stocks when the stock price is
@@ -191,11 +237,166 @@ We model it as MDP where we don't know the transition function.
 We use Q-learning with a function approximation and epsilon-greedy
 learning.
 
+\subsubsection*{Parameters}
+
+\begin{align*}
+  \epsilon &:= \text{Parameter for epsilon-greedy policy} \\
+  \phi(state,action) &:= \text{feature extractor} \\
+  p_i &:= \text{stock price of i-th day} \\
+  \vect{w} &:= \text{weight to learn} \\
+  \hat{Q}_{opt}(s, a; \vect{w}) &:= \vect{w} \dot \phi(s, a) \\
+\end{align*}
+
+In learning phase, for 100 times, we pick a day index randomly and run
+the MDP for the next 90 days.
+
+\subsubsection*{Choose an action}
+
+We examine the state and obtain the available actions: $[-o_k,c_k]$.
+
+Based on whether a random number $[0.0, 1.0]$ is greater than
+$\epsilon$, we pick exploration or exploitation.
+
+\[
+  \pi_{act}(s) = \\
+  \begin{cases}
+    \arg \max_{a \in actions}\hat{Q}_{opt}(s, a) & \text{probability } 1-\epsilon \\
+    \text{random choice from actions} & \text{probability } \epsilon \\
+  \end{cases}
+\]
+
+
+\subsubsection*{Calculate reward}
+
+Based on the action, we calculate the reward.
+
+\[
+  reward = p_{i+1}(o_{i+1} + c_{i+1}) - p_{i}(o_{i} + c_{i})
+\]
+
+\subsubsection*{Transition to the next state}
+
+When an action is taken, MDP moves to the next state, which represents
+the stock market and the current asset of the next day.
+
+\begin{align*}
+  c_{i+1} &\gets (c_{i} - action)\frac{p_i}{p_{i+1}} \\
+  o_{i+1} &\gets o_{i} + action \\
+  m_{i+1}, r_{i+1} &\gets \text{predict(i+1)} \\
+\end{align*}
+
+\subsubsection*{Update weights}
+
+We update the weights as follows.
+\begin{align*}
+\hat{V}_{opt}(s') &\gets \max_{a \in actions(s')}\hat{Q}_{opt}(s', a;\vect{w}) \\
+\vect{w} &\gets \vect{w} - \eta[\hat{Q}_{opt}(s, a;\vect{w}) - (reward + \gamma \hat{V}_{opt}(s'))\phi(s,a)
+\end{align*}
+
+\subsubsection{Test}
+
+In test phase, we run the learning algorithm on a new data with the
+following modification.
+
+\begin{itemize}
+\item Always choose the optimal action, that is to set $\epsilon = 0$
+\item Skip weight update step.
+\end{itemize}
+
+Then, see if how much money earned or lost by looking at the final
+asset value.
+
 
 \section{Performance}
 
 \subsection{Predictors}
+
+We use stock price data from Yahoo Finance
+\cite{web:yahoo_finance}. It provides day-to-day closing stock price
+for the period shown in table \ref{yahooStockData}.
+
+\begin{table}
+  \begin{tabular}{ccc}
+    Symbol & Start Date & End Date \\
+    \hline
+    aapl & 1980-12-12 & 2016-11-11 \\
+    bp & 1977-01-03 & 2016-11-11 \\
+    cop & 1981-12-31 & 2016-11-11 \\
+    cost & 1986-07-09 & 2016-11-11 \\
+    cvx & 1970-01-02 & 2016-11-11 \\
+    dj & 1985-01-29 & 2016-11-11 \\
+    gdx & 2006-10-02 & 2008-03-10 \\
+    hd & 2011-11-14 & 2016-11-11 \\
+    ibm & 1962-01-02 & 2016-11-11 \\
+    ko & 1962-01-02 & 2016-11-11 \\
+    low & 2011-11-14 & 2016-11-11 \\
+    nke & 1980-12-02 & 2016-11-11 \\
+    qcom & 1991-12-13 & 2016-11-14 \\
+    rut & 2011-10-03 & 2016-02-08 \\
+    tgt & 1980-03-17 & 2016-11-11 \\
+    wmt & 2011-11-14 & 2016-11-11 \\
+    xcom & 1970-01-02 & 2016-11-11 \\
+  \end{tabular}
+  \caption{Yahoo Finance Stock Data}
+  \label{yahooStockData}
+\end{table}
+
+
+
+We measure the performance of predictors by whether it predicts
+upward/downward trend correctly on the test data. For example, if the
+predictor predicts upward trend correctly, we call it as true
+positive.
+
+Table \ref{pperf630} shows the predictor performance after 630
+iteration over the data set.
+
+
+
+\begin{table}
+  \begin{tabular}{c|cccccc}
+    & TP & FN & FP & TN & Accuracy & F1 Score \\
+    \hline
+
+    SimpleNNPredictor & 0.43 & 0.08 & 0.42 & 0.07 & 0.50 & 0.63 \\
+    LinearPredictor & 0.51 & 0.00 & 0.49 & 0.00 & 0.51 & 0.68 \\
+
+  \end{tabular}
+  \caption{Predictor performance after 630 iteration}
+  \label{pperf630}
+\end{table}
+
+
+\begin{table}
+  \begin{tabular}{cc}
+    \begin{tabular}{cc|cc}
+      & & \multicolumn{2}{c}{Predicted} \\
+      & & $+ $ & $-$ \\
+      \hline
+      \multirow{2}{*}{Actual}
+      & $+$ & 0.20 & 0.15 \\
+      & $-$ & 0.39 & 0.26 \\
+      \hline
+    \end{tabular}
+    &
+    \begin{tabular}{cc}
+      Accuracy & 0.46 \\
+      F1 Score & 0.43 \\
+    \end{tabular}
+  \end{tabular}
+  \caption{instance with 1 days delta}
+\end{table}
+
+
+\subsubsection{SimpleNNPredictor}
+
+
+\subsubsection{LinearPredictor}
+
 \subsection{Trader}
+
+We measure the performance of the trader by plugging the perfect
+predictor: \verb|CheatPredictor|. 
 
 \section{Comparison to Baseline and Oracle}
 
