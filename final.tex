@@ -1,12 +1,13 @@
 \documentclass[twocolumn,10pt]{asme2ej}
 % \usepackage{fullpage,enumitem,amsmath,amssymb,graphicx,bm,listings,algpseudocode,hyperref,url,multirow,caption}
-\usepackage{enumitem,amsmath,amssymb,graphicx,bm,listings,algpseudocode,hyperref,url,multirow,caption}
+\usepackage{enumitem,amsmath,amssymb,graphicx,bm,listings,algpseudocode,hyperref,url,multirow,caption,graphicx}
 \newcommand{\vect}[1]{\boldsymbol{#1}}
 
 \lstdefinestyle{custom}{
   basicstyle=\footnotesize\ttfamily,
   language=Python,
 }
+\graphicspath{ {final/} }
 \begin{document}
 
 \title{Stock forecast system with Elliott Wave pattern recognition and adaptive trading strategy}
@@ -20,10 +21,10 @@
 
 \begin{abstract}
   We build a system to advise the best trading strategy. The system
-  consists of two components. One is stock price predictors based on
-  reflex models. The other is a trading strategy optimizer based on a
-  state model. We also build a test tool to evaluate the performance
-  of each component.
+  consists of two components; reflex model based stock price
+  predictors and a state model based trading strategy optimizer. We
+  also build a test tool to evaluate the performance of each
+  component.
 \end{abstract}
 
 \section{Introduction}
@@ -82,15 +83,25 @@ predictor.
 
 The system consists of two parts: predictors and traders.
 
-A predictor forecasts a future price of a particular stock based on
-various input data such as prior stock prices.
+A predictor forecasts a future price change of a particular
+stock. Each predictor uses different input data and inference
+algorithm. We evaluate the performance of each implementation and
+plug-in some of the best predictor to the final system.
 
-A trader uses the prediction and learns the optimal trading strategy
-(i.e. when to buy/sell how much stocks).
+A trader uses the prediction and learns the optimal trading policy:
+when to buy/sell how much stocks.
 
 There are four predictors (SimpleNNPredictor, LinearPredictor,
-SentimentPredictor, and CheatPredictor) and one trader
-(QTrader). The trader uses weighted average of predictions.
+SentimentPredictor, PatternPredictor, and CheatPredictor) and one
+trader (QTrader). 
+
+For the purpose of the discussion, we use the following
+variables. More variables will be defined as needed.
+
+\begin{align*}
+p_i &:= \text{Stock price of the }i\text{-th day} \\
+priceChange(p_{old}, p_{new}) &:= \frac{p_{new} - p_{old}}{p_{old}}
+\end{align*}
 
 \subsection{Predictors}
 
@@ -102,22 +113,24 @@ The predictor uses the multilayer perception implementation from
 scikit-learn \cite{web:scikit_learn}. It extract the feature by
 looking back the prior stock price.
 
-The look back date is defined as an array variable $b$:
+The look back date is defined as a vector $\vect{b}$:
 
 \[
-b \gets [87, 54, 33, 21, 13, 8, 5, 3, 2, 1]
+\vect{b} \gets [89, 55, 34, 21, 13, 8, 5, 3, 2, 1]
 \]
 
 In the training phase, it looks back the stock prices and calculate
-the price changes $X$ compared to the current price, which is used as
-an input to the algorithm.
+the price changes $X$ compared to the current price. Suppose the
+current date index is denoted as $i$, the input to the algorithm is:
 
 \[
-X_i \gets \left\{\frac{p_i - p_{i - b_j}}{p_{i - b_j}} : j \in |b|\right\}
+X_i \gets \left\{priceChange(p_{i - j}, p_i) : j \in \vect{b}\right\}
 \]
 
 The target value is is the actual stock price change for the given
-future date, \verb|np.datetime64(today)+D|.
+future date: $priceChange(p_i, p_{i+D})$.
+
+The algorithm uses two hidden layers; 3 and 2 nodes each.
 
 \subsubsection{LinearPredictor}
 The predictor is same as SimpleNNPredictor except that the underlying
@@ -164,54 +177,106 @@ Then, for a given date, we look back the last 30 days of the sentiment
 for the stock and create a feature vector of size 30.
 
 We use a linear regression with stochastic gradient descent from
-scikit-learn \cite{web:scikit_learn} to train the predictor.The target
-value is is the actual stock price change for the given future date,
-\verb|np.datetime64(today)+D|.
+scikit-learn \cite{web:scikit_learn} to train the predictor. The
+target value is is the actual stock price change for the given future
+date: $priceChange(p_i, p_{i+D})$.
+
+\subsubsection{PatternPredictor}
+
+The predictor uses a table look up method.
+
+It extracts the feature vector $\phi(x)$ by looking back the prior
+stock price. The look back date is defined as a vector $\vect{b}$:
+
+\[
+\vect{b} \gets [0, 1, 2, 3, 5, 8, 13, 21, 34]
+\]
+
+It looks back the stock prices and map the price changes of each
+interval to $+1$ (= price went up) or $-1$ (= price went down). When
+there is no price change, we pick $+1$ or $-1$ randomly.
+
+For example, suppose we have the stock price history in table
+\ref{patternStockExample}, the the feature vector would be
+$\phi(x)=[-1,-1,-1,+1,+1,0,+1,+1]$.
+
+\begin{table}
+  \begin{tabular}{cc}
+    n-days ago & price (dollar) \\
+    \hline
+    today & 100 \\
+    1 & 98 \\
+    2 & 95 \\
+    3 & 95 \\
+    5 & 93 \\
+    8 & 92 \\
+    13 & 96 \\
+    21 & 99 \\
+    34 & 100 \\
+  \end{tabular}
+  \caption{Example stock price change}
+  \label{patternStockExample}
+\end{table}
+
+The feature vector is used as a key of the table look up. Since there
+are eight intervals where each interval gets one of two values, there
+will be $256$ entries in the table.
+
+For the target value, the future price $p_{i+D}$ is mapped to $+1$,
+$-1$, or $0$ compared to the current price $p_i$. Note that we use $0$
+when there is no price change.
+
+In the training phase, the table is updated to the average of the
+target value $y$ as follows.
+
+\begin{align*}
+  \eta &\gets \frac{1}{\text{\# of updates to the entry}} \\
+  \text{table}[\phi(x)] &\gets (1 - \eta)\text{table}[\phi(x)] + \eta y \\
+\end{align*}
+
+In the prediction phase, we simply look up the table and return the
+estimated target value.
 
 \subsection{Trader}
 
-If we had a perfect predictor, the optimal strategy is of course to
+If we had a perfect predictor, the optimal strategy would have been to
 buy before the stock price goes up and to sell before it goes
 down. However, no predictor is perfect.
 
-Our goal is to maximize our asset value $U$ after the sequence of
-trades. Suppose the last day index is $n$, the asset value $U$ is defined:
+To learn the optimal trading policy given the uncertain predictions,
+we use a reinforcement learning approach.
+
+For the sake of discussion, we define some additional variables here.
+\begin{align*}
+  o_i &:= \text{The number of stocks owned on }i\text{-th day.} \\
+  c_i &:= \text{the maximum number of stocks}\\
+  & \text{we could buy with our current cash on }i\text{-th day.} \\
+  m_i &:= \text{the predicted slope by performing a least square} \\
+  & \text{polynomial fit over the predicted future price changes.} \\
+  r_i &:= \text{the sum of residuals of the predicted slope above.} \\
+\end{align*}
+The goal is to find a trading policy to maximize our asset value $u$
+after the sequence of trades. Suppose the last day index is $n$, the
+asset value $u_n$ is defined:
 
 \[
-U = p_n(o_n + c_n),
+u_n = p_n(o_n + c_n)
 \]
-where $p_n$ is the stock price of the last day, $o_n$ is the number
-of stocks owned at the last day, and $c_n$ is the maximum number of
-stocks we could buy with our current cash in the pocket at the last
-day.
-
-The trader finds the optimal strategy to meet the goal.
 
 \subsubsection{Model}
 
-We model it as MDP where we don't know the transition function.
+We model the problem as MDP where we don't know the transition function.
 
 \begin{description}
-\item[State] For $i$-th day, the state is defined to have a tuple of
-  these values.
-  \begin{itemize}
-  \item $o_i$, the number of stocks owned.
-  \item $c_i$, the number of stocks (floating number) we can buy with
-    our current cash amount. In other words, it is the cash amount
-    divided by the current stock price $p_i$.
-    \item $m_i$, the predicted slope by performing a least square
-      polynomial fit over the predicted future price changes.
-    \item $r_i$, the sum of residuals of the predicted slope
-      above.
-  \end{itemize}
+\item[State] For $i$-th day, the state is defined to have a tuple $(o_i,c_i,m_i,r_i)$.
 
 \item[Initial State] Before running MDP starting at day index $start$,
   we initialize the state as follows.
   \begin{itemize}
   \item $o_{start} = 0$
   \item $o_{start} = 10$
-  \item $m_{start}$ and $r_{start}$ are initialized by the predictor based
-    on the first day.
+  \item $m_{start}$ and $r_{start}$ are initialized by a predictor
+    based on the first day.
   \end{itemize}
   
 \item[Action] The action is an integer in the range: $[-o_i,c_i]$. The
@@ -230,6 +295,8 @@ We model it as MDP where we don't know the transition function.
   
   Intuitively, we want to have more stocks when the stock price is
   high and we want to have more cash when the stock price is low.
+
+\item[EndState] $o_i < 1$ or the current date hits end of the period.
 \end{description}
 
 \subsubsection{Algorithm}
@@ -242,9 +309,8 @@ learning.
 \begin{align*}
   \epsilon &:= \text{Parameter for epsilon-greedy policy} \\
   \phi(state,action) &:= \text{feature extractor} \\
-  p_i &:= \text{stock price of i-th day} \\
   \vect{w} &:= \text{weight to learn} \\
-  \hat{Q}_{opt}(s, a; \vect{w}) &:= \vect{w} \dot \phi(s, a) \\
+  \hat{Q}_{opt}(s, a; \vect{w}) &:= \vect{w} \cdot \phi(s, a) \\
 \end{align*}
 
 In learning phase, for 100 times, we pick a day index randomly and run
@@ -325,14 +391,13 @@ for the period shown in table \ref{yahooStockData}.
     cost & 1986-07-09 & 2016-11-11 \\
     cvx & 1970-01-02 & 2016-11-11 \\
     dj & 1985-01-29 & 2016-11-11 \\
-    gdx & 2006-10-02 & 2008-03-10 \\
     hd & 2011-11-14 & 2016-11-11 \\
     ibm & 1962-01-02 & 2016-11-11 \\
     ko & 1962-01-02 & 2016-11-11 \\
     low & 2011-11-14 & 2016-11-11 \\
     nke & 1980-12-02 & 2016-11-11 \\
-    qcom & 1991-12-13 & 2016-11-14 \\
-    rut & 2011-10-03 & 2016-02-08 \\
+    qcom & 1991-12-13 & 2016-11-11 \\
+    rut & 1987-09-10 & 2016-11-11 \\
     tgt & 1980-03-17 & 2016-11-11 \\
     wmt & 2011-11-14 & 2016-11-11 \\
     xcom & 1970-01-02 & 2016-11-11 \\
@@ -342,28 +407,45 @@ for the period shown in table \ref{yahooStockData}.
 \end{table}
 
 
-
 We measure the performance of predictors by whether it predicts
 upward/downward trend correctly on the test data. For example, if the
 predictor predicts upward trend correctly, we call it as true
-positive.
+positive. 
 
-Table \ref{pperf630} shows the predictor performance after 630
-iteration over the data set.
+Each predictor is trained over all the stock symbols up to
+2015-11-11. The rest of the one year data is used for testing.
+
+In one training iteration, for each stock symbol, we pick a date
+randomly and run through the predictor for the next 128 days. Since we
+have 16 stock symbols, one iteration feeds $128 * 16 = 2048$ training
+samples (note: they are not necessarily unique) to the predictor.
 
 
+\subsubsection{SimpleNNPredictor}
+
+Table \ref{pred-perf-SimpleNNPredictor-1-398}, \ref{pred-perf-SimpleNNPredictor-3-398}, and
+\ref{pred-perf-SimpleNNPredictor-7-398} shows prediction performance of
+SimpleNNPredictor after 398 iteration. We can observe the accuracy is slightly better than 50\%.
 
 \begin{table}
-  \begin{tabular}{c|cccccc}
-    & TP & FN & FP & TN & Accuracy & F1 Score \\
-    \hline
-
-    SimpleNNPredictor & 0.43 & 0.08 & 0.42 & 0.07 & 0.50 & 0.63 \\
-    LinearPredictor & 0.51 & 0.00 & 0.49 & 0.00 & 0.51 & 0.68 \\
-
+  \begin{tabular}{cc}
+    \begin{tabular}{cc|cc}
+      & & \multicolumn{2}{c}{Predicted} \\
+      & & $+ $ & $-$ \\
+      \hline
+      \multirow{2}{*}{Actual}
+      & $+$ & 0.15 & 0.20 \\
+      & $-$ & 0.28 & 0.37 \\
+      \hline
+    \end{tabular}
+    &
+    \begin{tabular}{cc}
+      Accuracy & 0.52 \\
+      F1 Score & 0.38 \\
+    \end{tabular}
   \end{tabular}
-  \caption{Predictor performance after 630 iteration}
-  \label{pperf630}
+  \caption{SimpleNNPredictor, $D=1$, 398 iterations}
+  \label{pred-perf-SimpleNNPredictor-1-398}
 \end{table}
 
 
@@ -374,29 +456,231 @@ iteration over the data set.
       & & $+ $ & $-$ \\
       \hline
       \multirow{2}{*}{Actual}
-      & $+$ & 0.20 & 0.15 \\
-      & $-$ & 0.39 & 0.26 \\
+      & $+$ & 0.40 & 0.10 \\
+      & $-$ & 0.39 & 0.11 \\
       \hline
     \end{tabular}
     &
     \begin{tabular}{cc}
-      Accuracy & 0.46 \\
-      F1 Score & 0.43 \\
+      Accuracy & 0.51 \\
+      F1 Score & 0.62 \\
     \end{tabular}
   \end{tabular}
-  \caption{instance with 1 days delta}
+  \caption{SimpleNNPredictor, $D=3$, 398 iterations}
+  \label{pred-perf-SimpleNNPredictor-3-398}
 \end{table}
 
 
-\subsubsection{SimpleNNPredictor}
+\begin{table}
+  \begin{tabular}{cc}
+    \begin{tabular}{cc|cc}
+      & & \multicolumn{2}{c}{Predicted} \\
+      & & $+ $ & $-$ \\
+      \hline
+      \multirow{2}{*}{Actual}
+      & $+$ & 0.28 & 0.23 \\
+      & $-$ & 0.24 & 0.24 \\
+      \hline
+    \end{tabular}
+    &
+    \begin{tabular}{cc}
+      Accuracy & 0.52 \\
+      F1 Score & 0.54 \\
+    \end{tabular}
+  \end{tabular}
+  \caption{SimpleNNPredictor, $D=7$, 398 iterations}
+  \label{pred-perf-SimpleNNPredictor-7-398}
+\end{table}
 
+
+However, figure \ref{pred-perf-SimpleNNPredictor-7-f1} shows that the predictor
+performance, in terms of F1 score, does not improve over the training
+iteration. 
+
+\begin{figure}
+  \centering
+  \includegraphics[width=5cm]{pred-perf-SimpleNNPredictor-7-f1}
+  \caption{SimpleNNPredictor F1 score by the number of iterations}
+  \label{pred-perf-SimpleNNPredictor-7-f1}
+\end{figure}
 
 \subsubsection{LinearPredictor}
 
+Table \ref{pred-perf-LinearPredictor-1-398},
+\ref{pred-perf-LinearPredictor-3-398}, and
+\ref{pred-perf-LinearPredictor-7-398} shows prediction performance of
+LinearPredictor after 398 iteration. Although we can observe the
+accuracy is slightly better than 50\%, the confusion matrix indicates
+strong bias in the prediction.
+
+\begin{table}
+  \begin{tabular}{cc}
+    \begin{tabular}{cc|cc}
+      & & \multicolumn{2}{c}{Predicted} \\
+      & & $+ $ & $-$ \\
+      \hline
+      \multirow{2}{*}{Actual}
+      & $+$ & 0.00 & 0.35 \\
+      & $-$ & 0.00 & 0.65 \\
+      \hline
+    \end{tabular}
+    &
+    \begin{tabular}{cc}
+      Accuracy & 0.65 \\
+      F1 Score & 0.00 \\
+    \end{tabular}
+  \end{tabular}
+  \caption{LinearPredictor, $D=1$, 398 iterations}
+  \label{pred-perf-LinearPredictor-1-398}
+\end{table}
+
+
+\begin{table}
+  \begin{tabular}{cc}
+    \begin{tabular}{cc|cc}
+      & & \multicolumn{2}{c}{Predicted} \\
+      & & $+ $ & $-$ \\
+      \hline
+      \multirow{2}{*}{Actual}
+      & $+$ & 0.50 & 0.00 \\
+      & $-$ & 0.50 & 0.00 \\
+      \hline
+    \end{tabular}
+    &
+    \begin{tabular}{cc}
+      Accuracy & 0.50 \\
+      F1 Score & 0.67 \\
+    \end{tabular}
+  \end{tabular}
+  \caption{LinearPredictor, $D=3$, 398 iterations}
+  \label{pred-perf-LinearPredictor-3-398}
+\end{table}
+
+
+\begin{table}
+  \begin{tabular}{cc}
+    \begin{tabular}{cc|cc}
+      & & \multicolumn{2}{c}{Predicted} \\
+      & & $+ $ & $-$ \\
+      \hline
+      \multirow{2}{*}{Actual}
+      & $+$ & 0.51 & 0.00 \\
+      & $-$ & 0.49 & 0.00 \\
+      \hline
+    \end{tabular}
+    &
+    \begin{tabular}{cc}
+      Accuracy & 0.51 \\
+      F1 Score & 0.68 \\
+    \end{tabular}
+  \end{tabular}
+  \caption{LinearPredictor, $D=7$, 398 iterations}
+  \label{pred-perf-LinearPredictor-7-398}
+\end{table}
+
+Figure \ref{pred-perf-LinearPredictor-7-f1} shows that the predictor
+performance, in terms of F1 score, does not improve over the training
+iteration. 
+
+\begin{figure}
+  \centering
+  \includegraphics[width=5cm]{pred-perf-LinearPredictor-7-f1}
+  \caption{LinearPredictor F1 score by the number of iterations}
+  \label{pred-perf-LinearPredictor-7-f1}
+\end{figure}
+
+\subsubsection{PatternPredictor}
+
+Table \ref{pred-perf-PatternPredictor-1-398},
+\ref{pred-perf-PatternPredictor-3-398}, and
+\ref{pred-perf-PatternPredictor-7-398} shows prediction performance of
+PatternPredictor after 398 iteration.
+
+This predictor shows sensible performance. The accuracy is almost
+always slightly more than 50\%. 
+
+\begin{table}
+  \begin{tabular}{cc}
+    \begin{tabular}{cc|cc}
+      & & \multicolumn{2}{c}{Predicted} \\
+      & & $+ $ & $-$ \\
+      \hline
+      \multirow{2}{*}{Actual}
+      & $+$ & 0.21 & 0.14 \\
+      & $-$ & 0.36 & 0.28 \\
+      \hline
+    \end{tabular}
+    &
+    \begin{tabular}{cc}
+      Accuracy & 0.50 \\
+      F1 Score & 0.46 \\
+    \end{tabular}
+  \end{tabular}
+  \caption{PatternPredictor, $D=1$, 398 iterations}
+  \label{pred-perf-PatternPredictor-1-398}
+\end{table}
+
+
+\begin{table}
+  \begin{tabular}{cc}
+    \begin{tabular}{cc|cc}
+      & & \multicolumn{2}{c}{Predicted} \\
+      & & $+ $ & $-$ \\
+      \hline
+      \multirow{2}{*}{Actual}
+      & $+$ & 0.34 & 0.16 \\
+      & $-$ & 0.32 & 0.18 \\
+      \hline
+    \end{tabular}
+    &
+    \begin{tabular}{cc}
+      Accuracy & 0.52 \\
+      F1 Score & 0.58 \\
+    \end{tabular}
+  \end{tabular}
+  \caption{PatternPredictor, $D=3$, 398 iterations}
+  \label{pred-perf-PatternPredictor-3-398}
+\end{table}
+
+
+\begin{table}
+  \begin{tabular}{cc}
+    \begin{tabular}{cc|cc}
+      & & \multicolumn{2}{c}{Predicted} \\
+      & & $+ $ & $-$ \\
+      \hline
+      \multirow{2}{*}{Actual}
+      & $+$ & 0.38 & 0.13 \\
+      & $-$ & 0.34 & 0.15 \\
+      \hline
+    \end{tabular}
+    &
+    \begin{tabular}{cc}
+      Accuracy & 0.53 \\
+      F1 Score & 0.62 \\
+    \end{tabular}
+  \end{tabular}
+  \caption{PatternPredictor, $D=7$, 398 iterations}
+  \label{pred-perf-PatternPredictor-7-398}
+\end{table}
+
+Figure \ref{pred-perf-PatternPredictor-7-f1} shows that the predictor
+performance, in terms of F1 score, improves as we increase the
+training iteration.
+
+\begin{figure}
+  \centering
+  \includegraphics[width=5cm]{pred-perf-PatternPredictor-7-f1}
+  \caption{PatternPredictor F1 score by the number of iterations}
+  \label{pred-perf-PatternPredictor-7-f1}
+\end{figure}
+
+\subsubsection{SentimentPredictor}
+
 \subsection{Trader}
 
-We measure the performance of the trader by plugging the perfect
-predictor: \verb|CheatPredictor|. 
+First of all, we measure the performance of the trader by plugging the
+perfect predictor: \verb|CheatPredictor|.
 
 \section{Comparison to Baseline and Oracle}
 

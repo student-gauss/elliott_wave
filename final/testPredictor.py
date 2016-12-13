@@ -10,7 +10,6 @@ from predictor import CheatPredictor, SimpleNNPredictor, LinearPredictor,Sentime
 
 Data = [
     ('dj', None, None),
-    ('gdx', None, None),
     ('qcom', None, None),
     ('rut', None, None),
     ('wmt', None, None),
@@ -110,9 +109,17 @@ def priceGetterForStock(stocks):
 outputFile = open('predictor_perform.csv', 'w')
 
 def main(trainingLoopCount):
-    predictors = [SimpleNNPredictor(1), SimpleNNPredictor(3), SimpleNNPredictor(7), LinearPredictor(1), LinearPredictor(3), LinearPredictor(7)]
-#    predictors = [PatternPredictor(7)]
-    predictors = [SimpleNNPredictor(7)]
+    # predictors = [SimpleNNPredictor(1),
+    #               SimpleNNPredictor(3),
+    #               SimpleNNPredictor(7),
+    #               LinearPredictor(1),
+    #               LinearPredictor(3),
+    #               LinearPredictor(7),
+    #               PatternPredictor(1),
+    #               PatternPredictor(3),
+    #               PatternPredictor(7)]
+    predictors = [PatternPredictor(7)]
+#    predictors = [SimpleNNPredictor(7)]
 # predictors = [SentimentPredictor(1, 'aapl')]
     for key, _, _ in Data:
         dateToPrice, startDate, lastDate = load(key)

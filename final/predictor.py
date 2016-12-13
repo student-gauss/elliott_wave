@@ -3,6 +3,7 @@ import json
 from sklearn.neural_network import MLPRegressor
 from sklearn.linear_model import SGDRegressor
 import numpy as np
+import random
 
 def getPriceChange(oldPrice, newPrice):
     return float(newPrice - oldPrice) / oldPrice
@@ -20,25 +21,25 @@ class Predictor:
     
 class CheatPredictor(Predictor):
     def __init__(self, predictionDelta):
-        Predictor.__init__(predictionDelta)
+        Predictor.__init__(self, predictionDelta)
         self.name = "Cheat Predictor"
         
     def extractFeatures(self, dateIndex):
-        return [dateIndex]
+        return dateIndex
 
     def train(self, phiX, y):
         # NOOP
         return
 
     def predict(self, phiX):
-        dateIndex = phiX[0]
+        dateIndex = phiX
         currentPrice = self.getPrice(dateIndex)
-        return getPriceChange(currentPrice, self.getPrice(delta + self.predictionDelta))
+        return getPriceChange(currentPrice, self.getPrice(dateIndex + self.predictionDelta))
 
 class SimpleNNPredictor(Predictor):
     def __init__(self, predictionDelta):
         Predictor.__init__(self, predictionDelta)
-        self.LookBack = [87, 54, 33, 21, 13, 8, 5, 3, 2, 1]
+        self.LookBack = [89, 55, 34, 21, 13, 8, 5, 3, 2, 1]
         self.regressor = MLPRegressor(hidden_layer_sizes=(3, 2), activation='tanh', solver='sgd', learning_rate='invscaling')
         self.name = "SimpleNNPredictor"
 
@@ -63,7 +64,7 @@ class SimpleNNPredictor(Predictor):
 class LinearPredictor(Predictor):
     def __init__(self, predictionDelta):
         Predictor.__init__(self, predictionDelta)
-        self.LookBack = [87, 54, 33, 21, 13, 8, 5, 3, 2, 1]
+        self.LookBack = [89, 55, 34, 21, 13, 8, 5, 3, 2, 1]
         self.regressor = SGDRegressor(alpha=0.05)
         self.name = "LinearPredictor"
 
@@ -123,7 +124,7 @@ class SentimentPredictor(Predictor):
 class PatternPredictor(Predictor):
     def __init__(self, predictionDelta):
         Predictor.__init__(self, predictionDelta)
-        self.LookBack = [1, 2, 3, 5, 8, 13, 21, 33]
+        self.LookBack = [1, 2, 3, 5, 8, 13, 21, 34]
         self.name = "PatternPredictor"
         self.patterns = collections.defaultdict(int)
         self.trainCount = collections.defaultdict(int)
@@ -139,7 +140,7 @@ class PatternPredictor(Predictor):
             elif change > 0:
                 pattern += [1]
             else:
-                pattern += [0]
+                pattern += [random.choice([-1, +1])]
 
             prevPrice = price
             

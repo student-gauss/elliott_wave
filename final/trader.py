@@ -2,24 +2,25 @@ import collections
 import numpy as np
 import random
 from sklearn.neural_network import MLPRegressor
-import matplotlib.pyplot as plt
-from mpl_toolkits.mplot3d import Axes3D
+# import matplotlib.pyplot as plt
+# from mpl_toolkits.mplot3d import Axes3D
 
 class Trader:
-    def __init__(self, predictor, getPrice):
-        self.predictor = predictor
-        self.getPrice = getPrice
+    def __init__(self, predictors):
+        self.predictors = predictors
+        self.getPrice = None
 
     def train(self, startIndex, endIndex):raise NotImplementedError('Override me')
     def test(self, startIndex, endIndex):raise NotImplementedError('Override me')
 
 def stateStr(state):
     ownedStocks, maxStocksToBuy, prediction = state
-    return '%4.2f %4.2f %5.2f' % (ownedStocks, maxStocksToBuy, prediction)
+    shape, residual = prediction
+    return 'o: %4.2f c: %4.2f m: %5.2f r: %4.2f' % (ownedStocks, maxStocksToBuy, shape, residual)
     
 class QTrader(Trader):
-    def __init__(self, predictor, getPrice):
-        Trader.__init__(self, predictor, getPrice)
+    def __init__(self, predictors):
+        Trader.__init__(self, predictors)
         
         self.Epsilon = 0.9
         self.Gamma = 0.9
@@ -32,11 +33,17 @@ class QTrader(Trader):
         self.statQopt = []
     
     def getPrediction(self, index):
-        phiX = self.predictor.extractFeatures(index)
-        futurePrices = self.predictor.predict(phiX)
-        predictingDelta = self.predictor.predictingDelta
+        predictionDelta = [0.0]
+        futurePriceChanges = [0.0]
+
+        for predictor in self.predictors:
+            phiX = predictor.extractFeatures(index)
+            futurePriceChanges += [predictor.predict(phiX)]
+            predictionDelta += [predictor.predictionDelta]
         
-        shape, residual, _, _, _ = np.polyfit(predictingDelta, futurePrices, 1, full=True)
+        shape, residual, _, _, _ = np.polyfit(predictionDelta, futurePriceChanges, 1, full=True)
+        if len(residual) == 0:
+            residual = [0]
         return (shape[0], residual[0])
 
     def initState(self, index):
@@ -53,7 +60,6 @@ class QTrader(Trader):
         
         normalizedAsset = float(ownedStocks) / (ownedStocks + maxStocksToBuy)
         normalizedAction = float(action) / self.InitialMaxStocksToBuy
-#        return np.array([normalizedAsset, normalizedAction * shape, 10000000.0 / residual ])
         return np.array([normalizedAsset, normalizedAction * shape, residual])
 
     def getQopt(self, state, action):
@@ -139,14 +145,9 @@ class QTrader(Trader):
             # pick optimal action
             _, action = self.getVoptAndAction(state)
             s_prime, reward = self.takeAction(state, action, index)
-#            print 'Pick optimal action from state = %s, action = %s, reward = %4.2f s_prime: %s' % (state, action, reward, s_prime)
+            print 'Pick optimal action from state = %s, action = %3d, reward = %4.2f s_prime: %s' % (stateStr(state), action, reward, stateStr(s_prime))
             state = s_prime
 
-        fig = plt.figure()
-        ax = fig.gca(projection='3d')
-#        ax.scatter(self.statPrediction, self.statAction, self.statQopt)
-#        plt.show()
-        
         ownedStocks, maxStocksToBuy, _ = state
         return (ownedStocks + maxStocksToBuy) * self.getPrice(endIndex) - self.InitialMaxStocksToBuy * self.getPrice(startIndex)
 
@@ -155,8 +156,8 @@ class QTrader(Trader):
 # RoteQTrader(Trader):
 # ===============================================================    
 class RoteQTrader(Trader):
-    def __init__(self, predictor, getPrice):
-        Trader.__init__(self, predictor, getPrice)
+    def __init__(self, predictors):
+        Trader.__init__(self, predictors)
         
         self.Epsilon = 0.9
         self.Gamma = 1.0
@@ -165,11 +166,15 @@ class RoteQTrader(Trader):
         self.updateCount = collections.defaultdict(float)
 
     def getPrediction(self, index):
-        phiX = self.predictor.extractFeatures(index)
-        futurePrices = [0]
-        futurePrices += self.predictor.predict(phiX)
+        predictionDelta = [0.0]
+        futurePriceChanges = [0.0]
+
+        for predictor in self.predictors:
+            phiX = predictor.extractFeatures(index)
+            futurePriceChanges += [predictor.predict(phiX)]
+            predictionDelta += [predictor.predictionDelta]
         
-        m, _ = np.polyfit([0] + self.predictor.predictingDelta, futurePrices, 1)
+        m, _ = np.polyfit(predictionDelta, futurePriceChanges, 1)
 #        print 'Prediction. Future Prices: %s, slope: %f' % (futurePrices, m)
         if m < -0.01:
             return -1

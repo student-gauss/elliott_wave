@@ -5,14 +5,13 @@ import numpy as np
 import collections
 import random
 import itertools
-import matplotlib.pyplot as plt
-from predictor import CheatPredictor, SimpleNNPredictor
+#import matplotlib.pyplot as plt
+from predictor import CheatPredictor, SimpleNNPredictor, PatternPredictor
 from trader import RoteQTrader
 from trader import QTrader
 
 Data = [
     ('dj', None, None),
-    ('gdx', None, None),
     ('qcom', None, None),
     ('rut', None, None),
     ('wmt', None, None),
@@ -64,23 +63,22 @@ def makeStockArray(dateToPrice, startDate, lastDate):
 def getPriceChange(oldPrice, newPrice):
     return float(newPrice - oldPrice) / oldPrice
 
-def trainPredictor(label, predictor, maxIndex):
-    for index in range(maxIndex):
-        phiX = predictor.extractFeatures(index)
-        currentPrice = predictor.getPrice(index)
-        predictor.train(phiX, [getPriceChange(currentPrice, predictor.getPrice(index + delta)) for delta in predictor.predictingDelta])
+def trainPredictor(predictor, trainingLoopCount, startIndex, endIndex):
+    for i in range(trainingLoopCount):
+        testIndex = random.choice(range(startIndex, endIndex))
+        for index in range(testIndex, testIndex + 128):
+            phiX = predictor.extractFeatures(index)
+            currentPrice = predictor.getPrice(index)
+            predictor.train(phiX, getPriceChange(currentPrice, predictor.getPrice(index + predictor.predictionDelta)))
 
-def trainTrader(label, trader, maxIndex):
-    for i in range(100):
+def trainTrader(label, trader, maxIndex, traderTrainingLoopCount):
+    for i in range(traderTrainingLoopCount):
         startIndex = random.choice(range(0, maxIndex))
         endIndex = min(startIndex + 90, maxIndex)
         
         trader.train(startIndex, endIndex)
 
-def test():
-    stocks = [1, 2, 3, 4, 3, 2]
-#    stocks = [3,2,1]
-    
+def priceGetterForStock(stocks):
     def getPrice(index):
         if index < 0:
             return stocks[0]
@@ -88,11 +86,18 @@ def test():
             return stocks[len(stocks) - 1]
         return stocks[index]
 
-    predictor = CheatPredictor(getPrice)
-    predictor.predictingDelta = [1, 2, 3]
-    trainPredictor('test', predictor, len(stocks))
+    return getPrice
 
-    trader = QTrader(predictor, getPrice)
+def test():
+    stocks = [1, 2, 3, 4, 3, 2]
+#    stocks = [3,2,1]
+    
+    predictor = CheatPredictor(1)
+    predictor.getPrice = priceGetterForStock(stocks)
+    trainPredictor(predictor, 1, 0, len(stocks))
+
+    trader = QTrader([predictor])
+    trader.getPrice = priceGetterForStock(stocks)
     trader.InitialMaxStocksToBuy = 2
     for i in range(500):
         trader.train(0, len(stocks))
@@ -101,36 +106,50 @@ def test():
     gain = trader.test(0, len(stocks))
     print gain
     
-def main():
-    for key, _, _ in Data:
+
+def main(predictorTrainingLoopCount, traderTrainingLoopCount):
+    # Train predictors
+#    predictors = [PatternPredictor(3), PatternPredictor(7)]
+    predictors = [CheatPredictor(1), CheatPredictor(3), CheatPredictor(7)]
+    for symbol, _, _ in Data:
         # dataToPrice[np.datetime64] := adjusted close price
         # startDate := The first date in the stock data
         # lastDate := The last date in the stock data
-        dateToPrice, startDate, lastDate = load(key)
+        dateToPrice, startDate, lastDate = load(symbol)
+        stocks = makeStockArray(dateToPrice, startDate, lastDate)
+
+        for predictor in predictors:
+            predictor.getPrice = priceGetterForStock(stocks)
+            predictor.startDate = startDate
+            trainPredictor(predictor, predictorTrainingLoopCount, 0, len(stocks) - 356)
+
+    # Train traders
+    traders = [QTrader(predictors)]
+    for symbol, _, _ in Data:
+        dateToPrice, startDate, lastDate = load(symbol)
 
         # Fill up stocks, the prices array, so that we can look up by day-index.
         stocks = makeStockArray(dateToPrice, startDate, lastDate)
 
-        def getPrice(index):
-            if index < 0:
-                return stocks[0]
-            elif index >= len(stocks):
-                return stocks[len(stocks) - 1]
-            return stocks[index]
-
-#        predictors = [SimpleNNPredictor(getPrice)]
-        predictors = [CheatPredictor(getPrice)]
-        for predictor in predictors:
-            # We learn from the first day up to one year ago.
-            trainPredictor(key, predictor, len(stocks) - 365)
-
-        traders = [QTrader(predictors[0], getPrice)]
         for trader in traders:
             # We learn from the first day up to one year ago.
-            trainTrader(key, trader, len(stocks) - 365)
+            trader.getPrice = priceGetterForStock(stocks)
+            trainTrader(symbol, trader, len(stocks) - 365, traderTrainingLoopCount)
 
+    # Test traders
+    for symbol, _, _ in Data:
+        dateToPrice, startDate, lastDate = load(symbol)
+
+        # Fill up stocks, the prices array, so that we can look up by day-index.
+        stocks = makeStockArray(dateToPrice, startDate, lastDate)
+            
         for trader in traders:
+            trader.getPrice = priceGetterForStock(stocks)
             gain = trader.test(len(stocks) - 365, len(stocks))
-            print '%s: %f' % (key, gain)
-main()
-# test()
+            print '%s, %d, %f' % (symbol, traderTrainingLoopCount, gain)
+
+# for i in np.arange(0, 4, 0.2):
+#     trainingLoopCount = int(10 ** i)
+#     print 'trainingLoopCount: ', trainingLoopCount
+#     main(1, trainingLoopCount)
+test()
