@@ -109,16 +109,19 @@ def priceGetterForStock(stocks):
 outputFile = open('predictor_perform.csv', 'w')
 
 def main(trainingLoopCount):
-    # predictors = [SimpleNNPredictor(1),
-    #               SimpleNNPredictor(3),
-    #               SimpleNNPredictor(7),
-    #               LinearPredictor(1),
-    #               LinearPredictor(3),
-    #               LinearPredictor(7),
-    #               PatternPredictor(1),
-    #               PatternPredictor(3),
-    #               PatternPredictor(7)]
-    predictors = [PatternPredictor(7)]
+    predictors = [SimpleNNPredictor(1),
+                  SimpleNNPredictor(3),
+                  SimpleNNPredictor(7),
+                  LinearPredictor(1),
+                  LinearPredictor(3),
+                  LinearPredictor(7),
+                  PatternPredictor(1),
+                  PatternPredictor(3),
+                  PatternPredictor(7),
+                  SentimentPredictor(1, 'aapl'),
+                  SentimentPredictor(3, 'aapl'),
+                  SentimentPredictor(7, 'aapl')]
+#    predictors = [PatternPredictor(7)]
 #    predictors = [SimpleNNPredictor(7)]
 # predictors = [SentimentPredictor(1, 'aapl')]
     for key, _, _ in Data:
