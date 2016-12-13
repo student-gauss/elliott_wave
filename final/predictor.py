@@ -45,7 +45,7 @@ class SimpleNNPredictor(Predictor):
     def extractFeatures(self, dateIndex):
         history = []
         currentPrice = self.getPrice(dateIndex)
-        for xi in range(len(self.LookBack)):
+        for xi in self.LookBack:
             history += [getPriceChange(self.getPrice(dateIndex - xi), currentPrice)]
             
         return history
@@ -64,14 +64,13 @@ class LinearPredictor(Predictor):
     def __init__(self, predictionDelta):
         Predictor.__init__(self, predictionDelta)
         self.LookBack = [87, 54, 33, 21, 13, 8, 5, 3, 2, 1]
-        self.LookBack = [5, 3, 2, 1]
         self.regressor = SGDRegressor(alpha=0.05)
         self.name = "LinearPredictor"
 
     def extractFeatures(self, dateIndex):
         history = []
         currentPrice = self.getPrice(dateIndex)
-        for xi in range(len(self.LookBack)):
+        for xi in self.LookBack:
             change = getPriceChange(self.getPrice(dateIndex - xi), currentPrice)
             history += [change, change**2]
             
@@ -120,3 +119,43 @@ class SentimentPredictor(Predictor):
         X = np.array(phiX).reshape(1, -1)
         result = self.regressor.predict(X)[0]
         return result
+
+class PatternPredictor(Predictor):
+    def __init__(self, predictionDelta):
+        Predictor.__init__(self, predictionDelta)
+        self.LookBack = [1, 2, 3, 5, 8, 13, 21, 33]
+        self.name = "PatternPredictor"
+        self.patterns = collections.defaultdict(int)
+        self.trainCount = collections.defaultdict(int)
+
+    def extractFeatures(self, dateIndex):
+        pattern = []
+        prevPrice = self.getPrice(dateIndex)
+        for xi in self.LookBack:
+            price = self.getPrice(dateIndex - xi)
+            change = getPriceChange(price, prevPrice)
+            if change < 0:
+                pattern += [-1]
+            elif change > 0:
+                pattern += [1]
+            else:
+                pattern += [0]
+
+            prevPrice = price
+            
+        return (tuple(pattern), self.getPrice(dateIndex))
+
+    def train(self, phiX, y):
+        pattern, currentPrice = phiX
+
+        change = y / abs(y) if y != 0 else 0
+        trainCountForPattern = self.trainCount[pattern]
+        eta = 1.0 / (trainCountForPattern + 1)
+        currentValue = self.patterns[pattern]
+        self.patterns[pattern] = (1 - eta) * currentValue + eta * change
+        self.trainCount[pattern] += 1
+    
+    def predict(self, phiX):
+        pattern, _ = phiX
+        return self.patterns[pattern]
+    

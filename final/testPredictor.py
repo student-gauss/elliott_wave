@@ -6,7 +6,7 @@ import collections
 import random
 import itertools
 import matplotlib.pyplot as plt
-from predictor import CheatPredictor, SimpleNNPredictor, LinearPredictor,SentimentPredictor
+from predictor import CheatPredictor, SimpleNNPredictor, LinearPredictor,SentimentPredictor,PatternPredictor
 
 Data = [
     ('dj', None, None),
@@ -74,7 +74,7 @@ def testPredictor(label, predictor, startIndex, endIndex):
         y_prime = predictor.predict(phiX)
         currentPrice = predictor.getPrice(index)
         y = getPriceChange(currentPrice, predictor.getPrice(index + predictor.predictionDelta))
-
+#        print 'y_prime = %4.2f y = %4.2f' % (y_prime, y)
         if y <= 0 and y_prime <= 0:
             tn += 1
 
@@ -110,8 +110,10 @@ def priceGetterForStock(stocks):
 outputFile = open('predictor_perform.csv', 'w')
 
 def main(trainingLoopCount):
-#    predictors = [SimpleNNPredictor(1), SimpleNNPredictor(3), SimpleNNPredictor(7), LinearPredictor(1), LinearPredictor(3), LinearPredictor(7)]
-    predictors = [SentimentPredictor(1, 'aapl')]
+    predictors = [SimpleNNPredictor(1), SimpleNNPredictor(3), SimpleNNPredictor(7), LinearPredictor(1), LinearPredictor(3), LinearPredictor(7)]
+#    predictors = [PatternPredictor(7)]
+    predictors = [SimpleNNPredictor(7)]
+# predictors = [SentimentPredictor(1, 'aapl')]
     for key, _, _ in Data:
         dateToPrice, startDate, lastDate = load(key)
 
