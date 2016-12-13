@@ -11,21 +11,21 @@ from trader import RoteQTrader
 from trader import QTrader
 
 Data = [
-    ('dj', None, None),
-    ('qcom', None, None),
-    ('rut', None, None),
-    ('wmt', None, None),
-    ('hd', None, None),
-    ('low', None, None),
-    ('tgt', None, None),
-    ('cost', None, None),
-    ('nke', None, None),
-    ('ko', None, None),
-    ('xom', None, None),
-    ('cvx', None, None),
-    ('cop', None, None),
-    ('bp', None, None),
-    ('ibm', None, None),
+    # ('dj', None, None),
+    # ('qcom', None, None),
+    # ('rut', None, None),
+    # ('wmt', None, None),
+    # ('hd', None, None),
+    # ('low', None, None),
+    # ('tgt', None, None),
+    # ('cost', None, None),
+    # ('nke', None, None),
+    # ('ko', None, None),
+    # ('xom', None, None),
+    # ('cvx', None, None),
+    # ('cop', None, None),
+    # ('bp', None, None),
+    # ('ibm', None, None),
     ('aapl', None, None),
 ]
 
@@ -99,7 +99,7 @@ def test():
     trader = QTrader([predictor])
     trader.getPrice = priceGetterForStock(stocks)
     trader.InitialMaxStocksToBuy = 2
-    for i in range(500):
+    for i in range(50):
         trader.train(0, len(stocks))
         
     print 'Testing'
@@ -109,8 +109,8 @@ def test():
 
 def main(predictorTrainingLoopCount, traderTrainingLoopCount):
     # Train predictors
-#    predictors = [PatternPredictor(3), PatternPredictor(7)]
-    predictors = [CheatPredictor(1), CheatPredictor(3), CheatPredictor(7)]
+    predictors = [PatternPredictor(1), PatternPredictor(3), PatternPredictor(7)]
+#    predictors = [CheatPredictor(1)]
     for symbol, _, _ in Data:
         # dataToPrice[np.datetime64] := adjusted close price
         # startDate := The first date in the stock data
@@ -135,6 +135,7 @@ def main(predictorTrainingLoopCount, traderTrainingLoopCount):
             # We learn from the first day up to one year ago.
             trader.getPrice = priceGetterForStock(stocks)
             trainTrader(symbol, trader, len(stocks) - 365, traderTrainingLoopCount)
+#            trainTrader(symbol, trader, 1000, traderTrainingLoopCount)
 
     # Test traders
     for symbol, _, _ in Data:
@@ -146,10 +147,11 @@ def main(predictorTrainingLoopCount, traderTrainingLoopCount):
         for trader in traders:
             trader.getPrice = priceGetterForStock(stocks)
             gain = trader.test(len(stocks) - 365, len(stocks))
+#            gain = trader.test(0, 1000)
             print '%s, %d, %f' % (symbol, traderTrainingLoopCount, gain)
 
-# for i in np.arange(0, 4, 0.2):
-#     trainingLoopCount = int(10 ** i)
-#     print 'trainingLoopCount: ', trainingLoopCount
-#     main(1, trainingLoopCount)
-test()
+for i in np.arange(4, 5, 0.2):
+    trainingLoopCount = int(10 ** i)
+    main(100, trainingLoopCount)
+#main(1000, 1000)
+# test()
