@@ -150,7 +150,7 @@ class QTrader(Trader):
             # pick optimal action
             _, action = self.getVoptAndAction(state, debug=False)
             s_prime, reward = self.takeAction(state, action, index)
-#            print 'Pick optimal action from state = %s, action = %3d, reward = %6.2f s_prime: %s' % (stateStr(state), action, reward, stateStr(s_prime))
+#             print 'Pick optimal action from state = %s, action = %3d, reward = %6.2f s_prime: %s' % (stateStr(state), action, reward, stateStr(s_prime))
             state = s_prime
 
         ownedStocks, maxStocksToBuy, _ = state

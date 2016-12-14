@@ -11,21 +11,21 @@ from trader import RoteQTrader
 from trader import QTrader
 
 Data = [
-    # ('dj', None, None),
-    # ('qcom', None, None),
-    # ('rut', None, None),
-    # ('wmt', None, None),
-    # ('hd', None, None),
-    # ('low', None, None),
-    # ('tgt', None, None),
-    # ('cost', None, None),
-    # ('nke', None, None),
-    # ('ko', None, None),
-    # ('xom', None, None),
-    # ('cvx', None, None),
-    # ('cop', None, None),
-    # ('bp', None, None),
-    # ('ibm', None, None),
+    ('dj', None, None),
+    ('qcom', None, None),
+    ('rut', None, None),
+    ('wmt', None, None),
+    ('hd', None, None),
+    ('low', None, None),
+    ('tgt', None, None),
+    ('cost', None, None),
+    ('nke', None, None),
+    ('ko', None, None),
+    ('xom', None, None),
+    ('cvx', None, None),
+    ('cop', None, None),
+    ('bp', None, None),
+    ('ibm', None, None),
     ('aapl', None, None),
 ]
 
@@ -109,7 +109,8 @@ def test():
 
 def main(predictorTrainingLoopCount, traderTrainingLoopCount):
     # Train predictors
-    predictors = [PatternPredictor(1), PatternPredictor(3), PatternPredictor(7)]
+#    predictors = [PatternPredictor(1), PatternPredictor(3), PatternPredictor(7)]
+    predictors = [PatternPredictor(7)]
 #    predictors = [CheatPredictor(1)]
     for symbol, _, _ in Data:
         # dataToPrice[np.datetime64] := adjusted close price
@@ -135,7 +136,6 @@ def main(predictorTrainingLoopCount, traderTrainingLoopCount):
             # We learn from the first day up to one year ago.
             trader.getPrice = priceGetterForStock(stocks)
             trainTrader(symbol, trader, len(stocks) - 365, traderTrainingLoopCount)
-#            trainTrader(symbol, trader, 1000, traderTrainingLoopCount)
 
     # Test traders
     for symbol, _, _ in Data:
@@ -147,11 +147,10 @@ def main(predictorTrainingLoopCount, traderTrainingLoopCount):
         for trader in traders:
             trader.getPrice = priceGetterForStock(stocks)
             gain = trader.test(len(stocks) - 365, len(stocks))
-#            gain = trader.test(0, 1000)
-            print '%s, %d, %f' % (symbol, traderTrainingLoopCount, gain)
+            print '%s, %d, %10.2f' % (symbol, traderTrainingLoopCount, gain)
 
-for i in np.arange(4, 5, 0.2):
-    trainingLoopCount = int(10 ** i)
-    main(100, trainingLoopCount)
-#main(1000, 1000)
+# for i in np.arange(1, 5, 0.2):
+#     trainingLoopCount = int(10 ** i)
+#     main(100, trainingLoopCount)
+main(100, 1000)
 # test()

@@ -20,11 +20,19 @@
 \maketitle
 
 \begin{abstract}
-  We build a system to advise the best trading strategy. The system
-  consists of two components; reflex model based stock price
-  predictors and a state model based trading strategy optimizer. We
-  also build a test tool to evaluate the performance of each
-  component.
+  In this project, we have built a system to advise an optimal stock market
+  trading policy; when and how many stocks you should buy or sell. We ran the
+  system over various stock symbols and evaluated the result.
+
+  The system consists of two components; reflex model based stock price
+  predictors and a state model based trading policy evaluator and optimizer. The
+  modularity allowed us to evaluate and optimize the performance of each
+  component independently.
+  
+  The result indicates there is probably a weak correlation between the
+  historical stock price behavior and the future stock prices. However, it was
+  hard to build a sensible policy optimizer with the given set of data and
+  training time.
 \end{abstract}
 
 \section{Introduction}
@@ -38,38 +46,40 @@ the Internet with sentiment analysis also became popular recently
 \cite{web:data_mining_analysis}.
 
 Elliott Wave Principle (EWP) is a classical technical analysis method
-\cite{frost1981elliott, web:study_of_cycles}. It is a hypothesis that stock market price
-can be modeled as a sequence of waves which shapes follow some defined
-rules. EWP suggests we can predict the future market price more
-accurately than a random chance by recognizing the wave pattern.  This
-is distinct from other stock price prediction methods in that it
-relies solely on the historical price changes and doesn't use external
-information such as market sentiment or industrial news. 
+\cite{frost1981elliott, web:study_of_cycles}. It is a hypothesis that stock
+market price can be modeled as a sequence of waves which shapes follow some
+defined rules. EWP suggests we can predict the future market price more
+accurately than a random chance by recognizing the wave pattern.  This is
+distinct from other stock price prediction methods in that it relies solely on
+the historical price changes and doesn't use external information such as market
+sentiment or industrial news.
 
-EWP, has been criticized for the poor performance
+EWP has been criticized for the poor performance
 \cite{aronson2007evidence-based}. Notably, for a given stock
 historical data, the rules yields many different interpretation of the
-wave forms. This uncertainty makes the future prediction hard, if not
+wave shapes. This uncertainty makes the future prediction hard, if not
 impossible, while one can claim the accuracy of the theory
 \emph{after} the fact. In a sense, EWP is so powerful and complex
-model that one cannot avoid over-fitting.
+model that it easily falls into over-fitting.
 
-We, however, believe the essence of EWP is still valid; future price
-is influenced by past price pattern. Intuitively, some often predict
-the price to go up if the past price has strong upward trend. Others
-may predict downward trend if the past price shows inverted-V
-shape. While such prediction may not be an inherent property of the
-stock market, the fact that many people believe that way affect the
-market. Therefore, it is probable that a reflex based machine learning
+We, however, believe the essence of EWP is valid; future price is influenced by
+past price pattern. Intuitively, some often predict the price to go up if the
+past price has strong upward trend. Others may predict downward trend if the
+past price shows inverted-V shape. While such prediction may not be an inherent
+property of the stock market, the fact that many people believe that way affect
+the market. Therefore, it is probable that a reflex based machine learning
 algorithm can predict a future price based on the past prices.
 
-TODO: talk about sentiment analysis based approach
+There is also several attempt to predict the stock price based on the sentiment
+analysis over various data source on the Internet \cite{arXiv:1010.3003}. In the
+project, we tried to use New York Times Community API
+\cite{web:nytimes_community_api} to retrieve the customer comments and use them
+as a hint to a predictor.
 
-Given that we have a sensible predictor, it is still an open question
-when and how to trade stocks to optimize the asset because the
-predictor is inherently imperfect. For example, it may not be smart to
-sell the entire stocks immediately just because a predictor says price
-would go down, because the prediction could be wrong. The trading
+Given we have a sensible predictor, it is still an open question when and how to
+trade stocks to optimize the asset because the predictor is inherently
+imperfect. For example, it may not be smart to sell the entire stocks asset
+immediately just because a predictor says price might go down. The trading
 decision should be educated by the actual performance of predictors.
 
 Our approach is to use a state based learning algorithm to find the
@@ -79,11 +89,9 @@ predictor.
 
 \section{System}
 
-\subsection{Overview}
-
 The system consists of two parts: predictors and traders.
 
-A predictor forecasts a future price change of a particular
+A predictor predicts a future price change of a particular
 stock. Each predictor uses different input data and inference
 algorithm. We evaluate the performance of each implementation and
 plug-in some of the best predictor to the final system.
@@ -91,12 +99,12 @@ plug-in some of the best predictor to the final system.
 A trader uses the prediction and learns the optimal trading policy:
 when to buy/sell how much stocks.
 
-There are four predictors (SimpleNNPredictor, LinearPredictor,
+There are five predictors (SimpleNNPredictor, LinearPredictor,
 SentimentPredictor, PatternPredictor, and CheatPredictor) and one
 trader (QTrader). 
 
-For the purpose of the discussion, we use the following
-variables. More variables will be defined as needed.
+For the purpose of the discussion, we use the following definitions. More
+variables will be defined as needed.
 
 \begin{align*}
 p_i &:= \text{Stock price of the }i\text{-th day} \\
@@ -105,8 +113,19 @@ priceChange(p_{old}, p_{new}) &:= \frac{p_{new} - p_{old}}{p_{old}}
 
 \subsection{Predictors}
 
-All the predictors take a hyper parameter $D$, which requests the
-predictor to predict the stock price change after $D$ days from the date.
+All the predictors are configured with a hyper parameter $D$, which indicates
+the future date delta to predict. 
+
+They also implement three operations.
+
+\begin{description}
+  \item[extractFeatures] For a given date, the function returns the feature
+    vector for the prediction.
+  \item[train] The function is invoked with a feature vector and the target
+    value, which is the price change after $D$ days.
+  \item[predict] The function is invoked with a feature vector and returns the
+    predicted price change after $D$ days.
+\end{description}
 
 \subsubsection{SimpleNNPredictor}
 The predictor uses the multilayer perception implementation from
@@ -237,6 +256,11 @@ target value $y$ as follows.
 In the prediction phase, we simply look up the table and return the
 estimated target value.
 
+\subsubsection{CheatPredictor}
+
+The predictor returns the future price changes by actually looking at the
+data. It is used for the testing purpose.
+
 \subsection{Trader}
 
 If we had a perfect predictor, the optimal strategy would have been to
@@ -244,7 +268,7 @@ buy before the stock price goes up and to sell before it goes
 down. However, no predictor is perfect.
 
 To learn the optimal trading policy given the uncertain predictions,
-we use a reinforcement learning approach.
+we use a reinforcement learning.
 
 For the sake of discussion, we define some additional variables here.
 \begin{align*}
@@ -313,8 +337,6 @@ learning.
   \hat{Q}_{opt}(s, a; \vect{w}) &:= \vect{w} \cdot \phi(s, a) \\
 \end{align*}
 
-In learning phase, for 100 times, we pick a day index randomly and run
-the MDP for the next 90 days.
 
 \subsubsection*{Choose an action}
 
@@ -350,6 +372,25 @@ the stock market and the current asset of the next day.
   o_{i+1} &\gets o_{i} + action \\
   m_{i+1}, r_{i+1} &\gets \text{predict(i+1)} \\
 \end{align*}
+
+\subsubsection*{Feature Extraction}
+
+We have two different feature extractors for the function approximation; simple
+and complex.
+
+The simple feature extractor uses just one feature; a product of the predicted
+future price slope and the action value. We use this just for testing purpose.
+
+\[
+\phi_s(s_i,a_{i+1}) := [m_i \times a_{i+1}]
+\]
+
+The complex feature extractor uses some combinations of the simple feature. We
+use this to predict the actual stock behavior.
+
+\[
+\phi_c(s_i,a_{i+1}) := [m_i \times a_{i+1}, m_i^2 \times a_{i+1}, m_i \times a_{i+1}^2, m_i^2 \times a_{i+1}^2 ]
+\]
 
 \subsubsection*{Update weights}
 
@@ -679,12 +720,107 @@ training iteration.
 
 \subsection{Trader}
 
-First of all, we measure the performance of the trader by plugging the
-perfect predictor: \verb|CheatPredictor|.
+We measured the performance of the trader by comparing the asset value between
+the beginning and the end of the episode.
 
-\section{Comparison to Baseline and Oracle}
+First, we split the data set to training set (till 2015-11-11) and development
+set (after 2015-11-11). 
+
+Then, we trained the predictors on the training set. Based on the predictor
+performance analysis in figure \ref{pred-perf-PatternPredictor-7-f1}, we use 100
+iteration for the predictor training. We use three predictors of a same kind;
+$D=1$, $D=3$, and $D=7$.
+
+With the trained predictors, we run \verb|QTrader| on the training set. In the
+training, we pick a start date index randomly and run an episode up to 90
+days. The process is repeated for the specified number of times:
+traderTrainingLoopCount.
+
+\subsection{CheatPredictor}
+
+Before trying a complex scenario, we need to verify the correctness of the
+trader implementation. we use \verb|CheatPredictor| and the simpified feature
+extractor $\phi_s(s,a)$ so that the performance is not impacted by the predictor
+and we can reason the resultant weights easily.
+
+In this simplified scenario, even with one iteration, the trader quickly learned
+the weight value of $[0.0873]$. Recall that $\phi_s(s,a)$ is defined as $[m_i
+  \times a_{i+1}]$. The positive weight value means:
+
+\begin{itemize}
+  \item When the predicted future price is upward ($m_i > 0$), the optimal
+    action to maximize $\hat{Q}_{opt}(s, a)$ is the max value of action; buy as
+    many stocks as possible.
+
+  \item When the predicted future price is downward ($m_i < 0$), the optimal
+    action to maximize $\hat{Q}_{opt}(s, a)$ is the min value of action; sell as
+    many stocks as possible.
+\end{itemize}
+
+Therefore, the trader implementation appears to be sensible.
+
+\subsection{PatternPredictor}
+
+According to the predictor analysis, \verb|PatternPredictor| appears to be the
+best. We have conducted two test cases; the first case is to use one instance of
+\verb|PatternPredictor| with $D=1$ and the other case is to use three instances
+with $D=[1, 3, 7]$.
+
+Table \ref{trader-perf-PatternPredictor-1000} shows the result. Unfortunately,
+we are not convinced that the system made more money than a chance result.
+
+\begin{table}
+  \begin{tabular}{crr}
+    & \multicolumn{1}{c}{Gain (US\$)} \\
+    Symbol & $D=1$ & $D=[1,3,7]$ \\
+    \hline
+    dj &  13945.71  & -3142.03 \\
+    qcom &  -28.77  & -2.29 \\
+    rut &  1388.12  & 175.32 \\
+    wmt &   133.03  & 6.54 \\
+    hd &    -59.87  & -34.99 \\
+    low &   -52.70  & 4.87 \\
+    tgt &    60.83  & 32.07 \\
+    cost & -264.94  & -136.91\\
+    nke &    84.20  & -16.31 \\
+    ko &    -25.74  & -8.51 \\
+    xom &    30.16  & -10.20 \\
+    cvx &   312.85  & 73.53 \\
+    cop &   -32.72  & 61.35 \\
+    bp &     20.58  & -2.43 \\
+    ibm &    28.37  & 37.15 \\
+    aapl &    2.57  & 43.06 \\
+  \end{tabular}
+  \caption{Trader with PatternPredictor, 1000 iterations}
+  \label{trader-perf-PatternPredictor-1000}
+\end{table}
 
 \section{Conclusion}
+
+We have successfully confirmed, with the result of \verb|PatternPredictor|, the
+stock market behavior can be predicted by the prior price changes.
+
+The predictor uses table look up algorithm as opposed to any generalization
+algorithm such as a linear regression and a neural network. Other predictors
+(\verb|SimpleNNPredictor| and \verb|LinearPredictor|) didn't perform well. 
+
+It is, in a sense, supported by Elliott Wave Theory, which focuses on the wave
+shape instead of the exact prices. However, by simplifying the stock market
+behavior into a table of 256 entries, we are afraid we miss some important
+features. Ultimately, \verb|PatternPredictor| performs just silightly better
+than 50\% accuracy. We might be able to design better predictor by using more
+complex model (more hidden layers and/or features) -- it's a future research
+work.
+
+Another predictor, \verb|SentimentPredictor|, may have potential but didn't
+perform well in the current configuration. We suspect it's due to the lack of
+data. Unfortunately, we couldn't find any convenient free data source other than
+New York Times API (For example, Twitter API doesn't allow us to access older
+tweets than a few weeks anymore).
+
+The trader had even harder challenges. 
+
+
 
 
 \bibliographystyle{plain}
