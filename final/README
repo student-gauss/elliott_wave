@@ -1,0 +1,21 @@
+No scripts takes command line arguments. 
+
+- plotPredictorPerformance.py Plots predictor performance table and graph.
+
+- plot_trader_perf.py Plots trader performance table and graph.
+
+- predictor.py The predictor implementations. Called by testPredictor.py and trader.py.
+
+- trader.py The trader implementation. Called by testTrader.py.
+
+- testPredictor.py Tests predictor implementations.
+
+- testTrader.py Tests trader implementation.
+
+- nytimes/download.py Downloads New York Times article comments through the API.
+
+- nytimes/nytimes.py Reorganize comments into one json file where the key is a stock symbol.
+
+- nytimes/stanford_nlp.py Add sentiment data into the file above.
+
+
