@@ -10,6 +10,7 @@ zip code.zip final/testTrader.py
 zip code.zip final/nytimes/download.py
 zip code.zip final/nytimes/nytimes.py
 zip code.zip final/nytimes/stanford_nlp.py
+zip code.zip final/README
 
 zip data.zip data/*.csv
 zip data.zip final/predictor_perform_*.csv
