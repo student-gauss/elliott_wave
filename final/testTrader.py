@@ -109,8 +109,8 @@ def test():
 
 def main(predictorTrainingLoopCount, traderTrainingLoopCount):
     # Train predictors
-#    predictors = [PatternPredictor(1), PatternPredictor(3), PatternPredictor(7)]
-    predictors = [PatternPredictor(7)]
+    predictors = [PatternPredictor(1), PatternPredictor(3), PatternPredictor(7)]
+#    predictors = [PatternPredictor(1)]
 #    predictors = [CheatPredictor(1)]
     for symbol, _, _ in Data:
         # dataToPrice[np.datetime64] := adjusted close price
@@ -152,5 +152,5 @@ def main(predictorTrainingLoopCount, traderTrainingLoopCount):
 # for i in np.arange(1, 5, 0.2):
 #     trainingLoopCount = int(10 ** i)
 #     main(100, trainingLoopCount)
-main(100, 1000)
+main(100, 100)
 # test()

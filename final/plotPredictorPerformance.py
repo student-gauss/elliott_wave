@@ -3,7 +3,7 @@ import pandas as pd
 import numpy as np
  
 samples = []
-with open('predictor_perform_dec13.csv', 'r') as dataFile:
+with open('predictor_perform_dec14.csv', 'r') as dataFile:
     for row in dataFile:
         samples += [row.split()]
         
@@ -11,7 +11,7 @@ df = pd.DataFrame(samples)
 df.columns = ['predictor', 'delta', 'loop', 'tp', 'fn', 'fp', 'tn', 'accuracy', 'f1']
 df[['delta','loop', 'tp', 'fn', 'fp', 'tn', 'accuracy', 'f1']] = df[['delta','loop', 'tp', 'fn', 'fp', 'tn', 'accuracy', 'f1']].apply(pd.to_numeric)
 
-for predictor in ['SimpleNNPredictor', 'LinearPredictor', 'PatternPredictor']:
+for predictor in ['SimpleNNPredictor', 'LinearPredictor', 'PatternPredictor', 'SentimentPredictor']:
     s = df[(df.predictor==predictor) & (df.delta==7)]
     ax = s.plot(x='loop', y='f1', label='F1 score')
     ax.set_xlabel('log(iterations)')

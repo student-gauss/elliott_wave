@@ -1,6 +1,6 @@
 \documentclass[twocolumn,10pt]{asme2ej}
 % \usepackage{fullpage,enumitem,amsmath,amssymb,graphicx,bm,listings,algpseudocode,hyperref,url,multirow,caption}
-\usepackage{enumitem,amsmath,amssymb,graphicx,bm,listings,algpseudocode,hyperref,url,multirow,caption,graphicx}
+\usepackage{enumitem,amsmath,amssymb,graphicx,bm,listings,algpseudocode,hyperref,url,multirow,caption,graphicx,appendix}
 \newcommand{\vect}[1]{\boldsymbol{#1}}
 
 \lstdefinestyle{custom}{
@@ -14,6 +14,12 @@
 \author{Motonari ITO
   \affiliation{
     SUNet ID: motonari
+    }
+}
+
+\author{Sundararaman Shiva
+  \affiliation{
+    SUNet ID: shivavs
     }
 }
 
@@ -162,6 +168,39 @@ The predictor uses New York Times Community API
 \cite{web:nytimes_community_api} to retrieve the customer comments of
 each news article from Jan 1, 2010 to Nov 10, 2016.
 
+There are 62000 comments in the period. We group the comments by
+keywords related to the stock symbol. For example, we use comments
+which contains any of aapl, apple, iphone, ipad, mac, ipod, or ios to
+predict AAPL stock price. Table \ref{sentiment_keywords} shows the
+keywords we use and the number of comments used for each symbol.
+
+
+\begin{table}
+  \begin{tabular}{clr}
+    Symbol & Keywords & Comments \\
+    \hline
+    aapl & aapl, apple, iphone, ipad, mac, ipod, ios & 463 \\
+    bp & bp, dudley, oil, major & 1873 \\
+    cop & conocophillips, lance, oil, major & 1853 \\
+    cost & costco, brotman, wholesale & 41 \\
+    cvx & chevron, oil, gas & 1029 \\
+    dj & dow, jones, dj & 76 \\
+    hd & home, depot, hd & 1395 \\
+    ibm & ibm, watson, ginni, rometty & 24 \\
+    ko & coca, cola, ko & 18 \\
+    low & lowe, lowes & 2 \\
+    nke & nike, nke & 6 \\
+    qcom & qualcomm, qcom & 0 \\
+    rut & russell, rut & 25 \\
+    tgt & target, tgt & 191 \\
+    wmt & wallmart, wmt & 3 \\
+    xcom & xcom, xtera & 0 \\
+  \end{tabular}
+  \caption{Sentiment analysis comment keywords}
+  \label{sentiment_keywords}
+\end{table}
+
+
 Then, it uses Stanford Core NLP \cite{manning-EtAl:2014:P14-5} to find
 the sentiment. The algorithm returns a tuple of sentimentValue and
 sentiment for each sentence in the comment. For example, a very
@@ -187,10 +226,6 @@ def comment_sentiment(comment):
 
   return float(score) / total
 \end{verbatim}
-
-We take a comment which contains a related word to a stock symbol. For
-example, for \verb|aapl|, we pick a comment with words 'aapl',
-'apple', 'iphone', 'ipad', 'mac', 'ipod', or 'ios'.
 
 Then, for a given date, we look back the last 30 days of the sentiment
 for the stock and create a feature vector of size 30.
@@ -468,72 +503,6 @@ Table \ref{pred-perf-SimpleNNPredictor-1-398}, \ref{pred-perf-SimpleNNPredictor-
 \ref{pred-perf-SimpleNNPredictor-7-398} shows prediction performance of
 SimpleNNPredictor after 398 iteration. We can observe the accuracy is slightly better than 50\%.
 
-\begin{table}
-  \begin{tabular}{cc}
-    \begin{tabular}{cc|cc}
-      & & \multicolumn{2}{c}{Predicted} \\
-      & & $+ $ & $-$ \\
-      \hline
-      \multirow{2}{*}{Actual}
-      & $+$ & 0.15 & 0.20 \\
-      & $-$ & 0.28 & 0.37 \\
-      \hline
-    \end{tabular}
-    &
-    \begin{tabular}{cc}
-      Accuracy & 0.52 \\
-      F1 Score & 0.38 \\
-    \end{tabular}
-  \end{tabular}
-  \caption{SimpleNNPredictor, $D=1$, 398 iterations}
-  \label{pred-perf-SimpleNNPredictor-1-398}
-\end{table}
-
-
-\begin{table}
-  \begin{tabular}{cc}
-    \begin{tabular}{cc|cc}
-      & & \multicolumn{2}{c}{Predicted} \\
-      & & $+ $ & $-$ \\
-      \hline
-      \multirow{2}{*}{Actual}
-      & $+$ & 0.40 & 0.10 \\
-      & $-$ & 0.39 & 0.11 \\
-      \hline
-    \end{tabular}
-    &
-    \begin{tabular}{cc}
-      Accuracy & 0.51 \\
-      F1 Score & 0.62 \\
-    \end{tabular}
-  \end{tabular}
-  \caption{SimpleNNPredictor, $D=3$, 398 iterations}
-  \label{pred-perf-SimpleNNPredictor-3-398}
-\end{table}
-
-
-\begin{table}
-  \begin{tabular}{cc}
-    \begin{tabular}{cc|cc}
-      & & \multicolumn{2}{c}{Predicted} \\
-      & & $+ $ & $-$ \\
-      \hline
-      \multirow{2}{*}{Actual}
-      & $+$ & 0.28 & 0.23 \\
-      & $-$ & 0.24 & 0.24 \\
-      \hline
-    \end{tabular}
-    &
-    \begin{tabular}{cc}
-      Accuracy & 0.52 \\
-      F1 Score & 0.54 \\
-    \end{tabular}
-  \end{tabular}
-  \caption{SimpleNNPredictor, $D=7$, 398 iterations}
-  \label{pred-perf-SimpleNNPredictor-7-398}
-\end{table}
-
-
 However, figure \ref{pred-perf-SimpleNNPredictor-7-f1} shows that the predictor
 performance, in terms of F1 score, does not improve over the training
 iteration. 
@@ -554,6 +523,60 @@ LinearPredictor after 398 iteration. Although we can observe the
 accuracy is slightly better than 50\%, the confusion matrix indicates
 strong bias in the prediction.
 
+Figure \ref{pred-perf-LinearPredictor-7-f1} shows that the predictor
+performance, in terms of F1 score, does not improve over the training
+iteration. 
+
+\begin{figure}
+  \centering
+  \includegraphics[width=5cm]{pred-perf-LinearPredictor-7-f1}
+  \caption{LinearPredictor F1 score by the number of iterations}
+  \label{pred-perf-LinearPredictor-7-f1}
+\end{figure}
+
+\subsubsection{PatternPredictor}
+
+Table \ref{pred-perf-PatternPredictor-1-398},
+\ref{pred-perf-PatternPredictor-3-398}, and
+\ref{pred-perf-PatternPredictor-7-398} shows prediction performance of
+PatternPredictor after 398 iteration.
+
+This predictor shows sensible performance. The accuracy is almost
+always slightly more than 50\%. 
+
+Figure \ref{pred-perf-PatternPredictor-7-f1} shows that the predictor
+performance, in terms of F1 score, improves as we increase the
+training iteration.
+
+\begin{figure}
+  \centering
+  \includegraphics[width=5cm]{pred-perf-PatternPredictor-7-f1}
+  \caption{PatternPredictor F1 score by the number of iterations}
+  \label{pred-perf-PatternPredictor-7-f1}
+\end{figure}
+
+\subsubsection{SentimentPredictor}
+
+Table \ref{pred-perf-SentimentPredictor-1-398},
+\ref{pred-perf-SentimentPredictor-3-398}, and
+\ref{pred-perf-SentimentPredictor-7-398} shows prediction performance
+of PatternPredictor after 398 iteration. Although we can observe the
+accuracy is slightly better than 50\%, the confusion matrix indicates
+strong bias in the prediction.
+
+
+Figure \ref{pred-perf-SentimentPredictor-7-f1} shows that the predictor
+performance, in terms of F1 score, does not improve over the training
+iteration. 
+
+\begin{figure}
+  \centering
+  \includegraphics[width=5cm]{pred-perf-SentimentPredictor-7-f1}
+  \caption{PatternPredictor F1 score by the number of iterations}
+  \label{pred-perf-SentimentPredictor-7-f1}
+\end{figure}
+
+
 \begin{table}
   \begin{tabular}{cc}
     \begin{tabular}{cc|cc}
@@ -561,14 +584,80 @@ strong bias in the prediction.
       & & $+ $ & $-$ \\
       \hline
       \multirow{2}{*}{Actual}
-      & $+$ & 0.00 & 0.35 \\
-      & $-$ & 0.00 & 0.65 \\
+      & $+$ & 0.18 & 0.17 \\
+      & $-$ & 0.32 & 0.33 \\
       \hline
     \end{tabular}
     &
     \begin{tabular}{cc}
-      Accuracy & 0.65 \\
-      F1 Score & 0.00 \\
+      Accuracy & 0.51 \\
+      F1 Score & 0.43 \\
+    \end{tabular}
+  \end{tabular}
+  \caption{SimpleNNPredictor, $D=1$, 398 iterations}
+  \label{pred-perf-SimpleNNPredictor-1-398}
+\end{table}
+
+
+\begin{table}
+  \begin{tabular}{cc}
+    \begin{tabular}{cc|cc}
+      & & \multicolumn{2}{c}{Predicted} \\
+      & & $+ $ & $-$ \\
+      \hline
+      \multirow{2}{*}{Actual}
+      & $+$ & 0.20 & 0.30 \\
+      & $-$ & 0.21 & 0.29 \\
+      \hline
+    \end{tabular}
+    &
+    \begin{tabular}{cc}
+      Accuracy & 0.49 \\
+      F1 Score & 0.44 \\
+    \end{tabular}
+  \end{tabular}
+  \caption{SimpleNNPredictor, $D=3$, 398 iterations}
+  \label{pred-perf-SimpleNNPredictor-3-398}
+\end{table}
+
+
+\begin{table}
+  \begin{tabular}{cc}
+    \begin{tabular}{cc|cc}
+      & & \multicolumn{2}{c}{Predicted} \\
+      & & $+ $ & $-$ \\
+      \hline
+      \multirow{2}{*}{Actual}
+      & $+$ & 0.29 & 0.22 \\
+      & $-$ & 0.32 & 0.17 \\
+      \hline
+    \end{tabular}
+    &
+    \begin{tabular}{cc}
+      Accuracy & 0.46 \\
+      F1 Score & 0.52 \\
+    \end{tabular}
+  \end{tabular}
+  \caption{SimpleNNPredictor, $D=7$, 398 iterations}
+  \label{pred-perf-SimpleNNPredictor-7-398}
+\end{table}
+
+
+\begin{table}
+  \begin{tabular}{cc}
+    \begin{tabular}{cc|cc}
+      & & \multicolumn{2}{c}{Predicted} \\
+      & & $+ $ & $-$ \\
+      \hline
+      \multirow{2}{*}{Actual}
+      & $+$ & 0.35 & 0.00 \\
+      & $-$ & 0.64 & 0.01 \\
+      \hline
+    \end{tabular}
+    &
+    \begin{tabular}{cc}
+      Accuracy & 0.36 \\
+      F1 Score & 0.52 \\
     \end{tabular}
   \end{tabular}
   \caption{LinearPredictor, $D=1$, 398 iterations}
@@ -619,26 +708,6 @@ strong bias in the prediction.
   \label{pred-perf-LinearPredictor-7-398}
 \end{table}
 
-Figure \ref{pred-perf-LinearPredictor-7-f1} shows that the predictor
-performance, in terms of F1 score, does not improve over the training
-iteration. 
-
-\begin{figure}
-  \centering
-  \includegraphics[width=5cm]{pred-perf-LinearPredictor-7-f1}
-  \caption{LinearPredictor F1 score by the number of iterations}
-  \label{pred-perf-LinearPredictor-7-f1}
-\end{figure}
-
-\subsubsection{PatternPredictor}
-
-Table \ref{pred-perf-PatternPredictor-1-398},
-\ref{pred-perf-PatternPredictor-3-398}, and
-\ref{pred-perf-PatternPredictor-7-398} shows prediction performance of
-PatternPredictor after 398 iteration.
-
-This predictor shows sensible performance. The accuracy is almost
-always slightly more than 50\%. 
 
 \begin{table}
   \begin{tabular}{cc}
@@ -647,14 +716,14 @@ always slightly more than 50\%.
       & & $+ $ & $-$ \\
       \hline
       \multirow{2}{*}{Actual}
-      & $+$ & 0.21 & 0.14 \\
-      & $-$ & 0.36 & 0.28 \\
+      & $+$ & 0.26 & 0.10 \\
+      & $-$ & 0.46 & 0.18 \\
       \hline
     \end{tabular}
     &
     \begin{tabular}{cc}
-      Accuracy & 0.50 \\
-      F1 Score & 0.46 \\
+      Accuracy & 0.44 \\
+      F1 Score & 0.48 \\
     \end{tabular}
   \end{tabular}
   \caption{PatternPredictor, $D=1$, 398 iterations}
@@ -669,14 +738,14 @@ always slightly more than 50\%.
       & & $+ $ & $-$ \\
       \hline
       \multirow{2}{*}{Actual}
-      & $+$ & 0.34 & 0.16 \\
-      & $-$ & 0.32 & 0.18 \\
+      & $+$ & 0.45 & 0.06 \\
+      & $-$ & 0.44 & 0.06 \\
       \hline
     \end{tabular}
     &
     \begin{tabular}{cc}
-      Accuracy & 0.52 \\
-      F1 Score & 0.58 \\
+      Accuracy & 0.50 \\
+      F1 Score & 0.64 \\
     \end{tabular}
   \end{tabular}
   \caption{PatternPredictor, $D=3$, 398 iterations}
@@ -691,63 +760,123 @@ always slightly more than 50\%.
       & & $+ $ & $-$ \\
       \hline
       \multirow{2}{*}{Actual}
-      & $+$ & 0.38 & 0.13 \\
-      & $-$ & 0.34 & 0.15 \\
+      & $+$ & 0.49 & 0.02 \\
+      & $-$ & 0.46 & 0.02 \\
       \hline
     \end{tabular}
     &
     \begin{tabular}{cc}
-      Accuracy & 0.53 \\
-      F1 Score & 0.62 \\
+      Accuracy & 0.52 \\
+      F1 Score & 0.67 \\
     \end{tabular}
   \end{tabular}
   \caption{PatternPredictor, $D=7$, 398 iterations}
   \label{pred-perf-PatternPredictor-7-398}
 \end{table}
 
-Figure \ref{pred-perf-PatternPredictor-7-f1} shows that the predictor
-performance, in terms of F1 score, improves as we increase the
-training iteration.
 
-\begin{figure}
-  \centering
-  \includegraphics[width=5cm]{pred-perf-PatternPredictor-7-f1}
-  \caption{PatternPredictor F1 score by the number of iterations}
-  \label{pred-perf-PatternPredictor-7-f1}
-\end{figure}
+\begin{table}
+  \begin{tabular}{cc}
+    \begin{tabular}{cc|cc}
+      & & \multicolumn{2}{c}{Predicted} \\
+      & & $+ $ & $-$ \\
+      \hline
+      \multirow{2}{*}{Actual}
+      & $+$ & 0.36 & 0.00 \\
+      & $-$ & 0.64 & 0.00 \\
+      \hline
+    \end{tabular}
+    &
+    \begin{tabular}{cc}
+      Accuracy & 0.36 \\
+      F1 Score & 0.52 \\
+    \end{tabular}
+  \end{tabular}
+  \caption{SentimentPredictor, $D=1$, 398 iterations}
+  \label{pred-perf-SentimentPredictor-1-398}
+\end{table}
 
-\subsubsection{SentimentPredictor}
+
+\begin{table}
+  \begin{tabular}{cc}
+    \begin{tabular}{cc|cc}
+      & & \multicolumn{2}{c}{Predicted} \\
+      & & $+ $ & $-$ \\
+      \hline
+      \multirow{2}{*}{Actual}
+      & $+$ & 0.50 & 0.00 \\
+      & $-$ & 0.50 & 0.00 \\
+      \hline
+    \end{tabular}
+    &
+    \begin{tabular}{cc}
+      Accuracy & 0.50 \\
+      F1 Score & 0.67 \\
+    \end{tabular}
+  \end{tabular}
+  \caption{SentimentPredictor, $D=3$, 398 iterations}
+  \label{pred-perf-SentimentPredictor-3-398}
+\end{table}
+
+
+\begin{table}
+  \begin{tabular}{cc}
+    \begin{tabular}{cc|cc}
+      & & \multicolumn{2}{c}{Predicted} \\
+      & & $+ $ & $-$ \\
+      \hline
+      \multirow{2}{*}{Actual}
+      & $+$ & 0.51 & 0.00 \\
+      & $-$ & 0.49 & 0.00 \\
+      \hline
+    \end{tabular}
+    &
+    \begin{tabular}{cc}
+      Accuracy & 0.51 \\
+      F1 Score & 0.68 \\
+    \end{tabular}
+  \end{tabular}
+  \caption{SentimentPredictor, $D=7$, 398 iterations}
+  \label{pred-perf-SentimentPredictor-7-398}
+\end{table}
 
 \subsection{Trader}
 
 We measured the performance of the trader by comparing the asset value between
 the beginning and the end of the episode.
 
-First, we split the data set to training set (till 2015-11-11) and development
-set (after 2015-11-11). 
+First, we split the data set to training set (till 2015-11-11) and
+test set (after 2015-11-11).
 
 Then, we trained the predictors on the training set. Based on the predictor
 performance analysis in figure \ref{pred-perf-PatternPredictor-7-f1}, we use 100
-iteration for the predictor training. We use three predictors of a same kind;
+iteration for the predictor training.
+
+The trader calculate $m_i$, the future price changes slope, by the
+predictions of predictors. We use a various number of a same predictor
+with different $D$ value for the experiment. For example, in one test
+case, we use the combination of three \verb|PatternPredictor| with
 $D=1$, $D=3$, and $D=7$.
 
-With the trained predictors, we run \verb|QTrader| on the training set. In the
-training, we pick a start date index randomly and run an episode up to 90
-days. The process is repeated for the specified number of times:
-traderTrainingLoopCount.
+With the trained predictors, we run \verb|QTrader| on the training
+set. In the training, we pick a start date index randomly and run an
+episode up to 90 days. The process is repeated for the specified
+number of times.
 
-\subsection{CheatPredictor}
+\subsection{Correctness}
 
-Before trying a complex scenario, we need to verify the correctness of the
-trader implementation. we use \verb|CheatPredictor| and the simpified feature
-extractor $\phi_s(s,a)$ so that the performance is not impacted by the predictor
-and we can reason the resultant weights easily.
+Before trying a complex scenario, we verified the correctness of the
+trader implementation. We use \verb|CheatPredictor| and the simplified
+feature extractor $\phi_s(s,a)$ so that the performance is not
+impacted by the predictor and we can reason the resultant weights
+easily.
 
-In this simplified scenario, even with one iteration, the trader quickly learned
-the weight value of $[0.0873]$. Recall that $\phi_s(s,a)$ is defined as $[m_i
-  \times a_{i+1}]$. The positive weight value means:
+In this simplified scenario, even with one iteration, the trader
+quickly learned the weight value of $[0.0873]$. Recall that
+$\phi_s(s,a)$ is defined as $[m_i \times a_{i+1}]$. Intuitively, the
+weight value can be interpreted as follows.
 
-\begin{itemize}
+\begin{enumerate}
   \item When the predicted future price is upward ($m_i > 0$), the optimal
     action to maximize $\hat{Q}_{opt}(s, a)$ is the max value of action; buy as
     many stocks as possible.
@@ -755,44 +884,53 @@ the weight value of $[0.0873]$. Recall that $\phi_s(s,a)$ is defined as $[m_i
   \item When the predicted future price is downward ($m_i < 0$), the optimal
     action to maximize $\hat{Q}_{opt}(s, a)$ is the min value of action; sell as
     many stocks as possible.
-\end{itemize}
+\end{enumerate}
 
 Therefore, the trader implementation appears to be sensible.
 
-\subsection{PatternPredictor}
+\subsection{Running on the test set}
 
-According to the predictor analysis, \verb|PatternPredictor| appears to be the
-best. We have conducted two test cases; the first case is to use one instance of
-\verb|PatternPredictor| with $D=1$ and the other case is to use three instances
-with $D=[1, 3, 7]$.
+According to the predictor analysis, \verb|PatternPredictor| is the
+most sensible predictor in our portfolio. We have conducted these test
+cases. The expectation is that short term prediction should be better
+than the long term prediction. Also, giving multiple prediction points
+should inform the trader better.
 
-Table \ref{trader-perf-PatternPredictor-1000} shows the result. Unfortunately,
-we are not convinced that the system made more money than a chance result.
+\begin{itemize}
+  \item Use one instance of the predictor with $D=1$.
+  \item Use one instance of the predictor with $D=7$.
+  \item Use three instances of the predictor with $D=[1,3,7]$.
+\end{itemize}
+
+Table \ref{trader-perf-PatternPredictor-100} shows the result. We
+indeed made a money as net, though we lost in some symbols.
 
 \begin{table}
-  \begin{tabular}{crr}
-    & \multicolumn{1}{c}{Gain (US\$)} \\
-    Symbol & $D=1$ & $D=[1,3,7]$ \\
+  \begin{tabular}{crrr}
+    & \multicolumn{3}{c}{Gain (US\$)} \\
+    Symbol & $D=1$ & $D=7$ & $D=[1,3,7]$ \\
     \hline
-    dj &  13945.71  & -3142.03 \\
-    qcom &  -28.77  & -2.29 \\
-    rut &  1388.12  & 175.32 \\
-    wmt &   133.03  & 6.54 \\
-    hd &    -59.87  & -34.99 \\
-    low &   -52.70  & 4.87 \\
-    tgt &    60.83  & 32.07 \\
-    cost & -264.94  & -136.91\\
-    nke &    84.20  & -16.31 \\
-    ko &    -25.74  & -8.51 \\
-    xom &    30.16  & -10.20 \\
-    cvx &   312.85  & 73.53 \\
-    cop &   -32.72  & 61.35 \\
-    bp &     20.58  & -2.43 \\
-    ibm &    28.37  & 37.15 \\
-    aapl &    2.57  & 43.06 \\
+     dj &        9177.92 & 9033.52 & 15234.80 \\
+   qcom &          -8.07 &   75.95 &   249.50 \\
+    rut &        1154.00 & -200.12 &  2838.05 \\
+    wmt &         214.27 &   63.82 &    59.76 \\
+     hd &         131.67 &  162.74 &   163.42 \\
+    low &        -123.54 &   38.83 &    -6.46 \\
+    tgt &         -81.63 &  -79.02 &  -100.02 \\
+   cost &        -180.67 &  115.74 &   -82.95 \\
+    nke &          55.58 &  -86.02 &   -10.95 \\
+     ko &         -30.42 &  -37.65 &     7.62 \\
+    xom &          -4.58 &  144.83 &   174.51 \\
+    cvx &         -60.90 &  274.49 &   180.37 \\
+    cop &        -157.38 &   46.34 &  -101.95 \\
+     bp &          60.41 &   86.08 &    46.37 \\
+    ibm &         196.59 &   65.05 &   218.54 \\
+    aapl &        -42.90 &  118.20 &   141.19 \\
+    \hline
+    Sum  &      10300.35 & 9822.78 & 19011.80
   \end{tabular}
-  \caption{Trader with PatternPredictor, 1000 iterations}
-  \label{trader-perf-PatternPredictor-1000}
+  \caption{Trader with PatternPredictor, 100 iterations}
+  \label{trader-perf-PatternPredictor-100}
 \end{table}
 
 \section{Conclusion}
@@ -800,27 +938,61 @@ we are not convinced that the system made more money than a chance result.
 We have successfully confirmed, with the result of \verb|PatternPredictor|, the
 stock market behavior can be predicted by the prior price changes.
 
-The predictor uses table look up algorithm as opposed to any generalization
-algorithm such as a linear regression and a neural network. Other predictors
-(\verb|SimpleNNPredictor| and \verb|LinearPredictor|) didn't perform well. 
+The predictor uses table look up algorithm by translating the price
+changes into a sequence of $+1$ or $-1$. We tried more generalized
+algorithms (\verb|SimpleNNPredictor| and \verb|LinearPredictor|) but
+they did not perform well.
 
-It is, in a sense, supported by Elliott Wave Theory, which focuses on the wave
-shape instead of the exact prices. However, by simplifying the stock market
-behavior into a table of 256 entries, we are afraid we miss some important
-features. Ultimately, \verb|PatternPredictor| performs just silightly better
-than 50\% accuracy. We might be able to design better predictor by using more
-complex model (more hidden layers and/or features) -- it's a future research
-work.
+It is, in a sense, supported by Elliott Wave Theory, which focuses on
+the wave shape instead of the exact prices. However, by simplifying
+the stock market behavior into a table of 256 entries, it is probable
+that we miss some important features; even \verb|PatternPredictor|
+performs just silightly better than 50\% accuracy anyway. We might be
+able to design a better predictor by using more complex model (more
+hidden layers and/or features) -- it's a future research work.
 
-Another predictor, \verb|SentimentPredictor|, may have potential but didn't
-perform well in the current configuration. We suspect it's due to the lack of
-data. Unfortunately, we couldn't find any convenient free data source other than
-New York Times API (For example, Twitter API doesn't allow us to access older
-tweets than a few weeks anymore).
+The other predictor, \verb|SentimentPredictor|, may have potential but
+didn't perform well in the current configuration. We suspect it's due
+to the lack of data -- the API provided just 62000 comments over the
+six years period. Besides, there are not so many article and user
+comments about stock market in New York Times; they mostly talk about
+politics and social matter. Unfortunately, we could not find any other
+convenient free data source. For example, Twitter API does not allow
+us to access older tweets than a few weeks ago.
 
-The trader had even harder challenges. 
+Despite the challenge of the predictors, the trader works reasonably
+well with \verb|PatternPredictor|, especially when we use three of
+them together to predict the price of different future dates. It is
+especially encouraging to observe that, as an Apple employee, it made
+more than \$140 over last year when AAPL did not perform well.
 
 
+\section{Code and Data}
+
+In the attached zip file, we have the following data and code.
+
+\begin{description}
+  \item[plotPredictorPerformance.py] Plots predictor performance table and graph.
+  \item[plot\_trader\_perf.py] Plots trader performance table and graph.
+  \item[predictor.py] The predictor implementations.
+  \item[trader.py] The trader implementation.
+  \item[testPredictor.py] Tests predictor implementations.
+  \item[testTrader.py] Tests trader implementation.
+  \item[predictor\_perform\_*] Predictor performance data obtained by
+    testPredictor.py. Note that the date in the file name indicates
+    when the data was obtained. Old data may be generated by a program
+    code with bugs.
+    
+  \item[trader\_perf\_\{iteration\}\_\{D\}] The trader performance
+    data with iterations and D values.
+  \item[nytimes/download.py] Downloads New York Times article comments through the API.
+  \item[nytimes/nyt\_comment\_\{date\}.json] The downloaded comments.
+  \item[nytimes/nytimes.py] Reorganize comments into one json file where the key is a stock symbol.
+  \item[nytimes/trend.json] Output file from the above script.
+  \item[nytimes/stanford\_nlp.py] Add sentiment data into the file above.
+  \item[nytimes/trends\_with\_sentiment.json] Output file from the above script.
+  \item[data/*.json] Stock data from Yahoo! Finance.
+\end{description}
 
 
 \bibliographystyle{plain}
