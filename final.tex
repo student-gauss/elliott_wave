@@ -45,24 +45,26 @@
 
 \section{Introduction}
 
-Stock forecast has been studied and practiced with various degree of
-success. The technical analysis is a methodology based on the
-historical stock market prices \cite{wiki:technical_analysis}. The
-fundamental analysis tries to predict based on the business's
-financial statement \cite{wiki:fundamental_analysis}. Data mining over
-the Internet with sentiment analysis also became popular recently
+Stock forecast has been studied and practiced with various degrees of
+success. Technical analysis is a methodology for predicting future
+trend based on historical stock
+prices\cite{wiki:technical_analysis}. The fundamental analysis tries
+to predict based on the business's financial statement
+\cite{wiki:fundamental_analysis}. Data mining over the Internet with
+sentiment analysis also became popular recently
 \cite{web:data_mining_analysis}.
 
 Elliott Wave Principle (EWP) is a classical technical analysis method
-\cite{frost1981elliott, web:study_of_cycles}. It is a hypothesis that stock
-market price can be modeled as a sequence of waves which shapes follow some
-defined rules. EWP suggests we can predict the future market price more
-accurately than a random chance by recognizing the wave pattern.  This is
-distinct from other stock price prediction methods in that it relies solely on
-the historical price changes and doesn't use external information such as market
-sentiment or industrial news.
+\cite{frost1981elliott, web:study_of_cycles}. It is a hypothesis that
+stock market price can be modeled as a sequence of waves which whose
+shapes follow some defined rules. EWP suggests we can predict the
+future market price more accurately than a random chance by
+recognizing the wave pattern.  This is distinct from other stock price
+prediction methods in that it relies solely on the historical price
+changes and doesn't use external information such as market sentiment
+or industrial news.
 
-EWP has been criticized for the poor performance
+EWP has been criticized for its poor performance
 \cite{aronson2007evidence-based}. Notably, for a given stock
 historical data, the rules yields many different interpretation of the
 wave shapes. This uncertainty makes the future prediction hard, if not
@@ -74,15 +76,15 @@ We, however, believe the essence of EWP is valid; future price is influenced by
 past price pattern. Intuitively, some often predict the price to go up if the
 past price has strong upward trend. Others may predict downward trend if the
 past price shows inverted-V shape. While such prediction may not be an inherent
-property of the stock market, the fact that many people believe that way affect
+property of the stock market, the fact that many people believe that way affects
 the market. Therefore, it is probable that a reflex based machine learning
 algorithm can predict a future price based on the past prices.
 
-There is also several attempt to predict the stock price based on the sentiment
-analysis over various data source on the Internet \cite{arXiv:1010.3003}. In the
-project, we tried to use New York Times Community API
-\cite{web:nytimes_community_api} to retrieve the customer comments and use them
-as a hint to a predictor.
+There are also several attempts to predict the stock price based on
+the sentiment analysis over various data source on the Internet
+\cite{arXiv:1010.3003}. In this project, we tried to use New York
+Times Community API \cite{web:nytimes_community_api} to retrieve the
+customer comments and use them as a hint to a predictor.
 
 Given we have a sensible predictor, it is still an open question when and how to
 trade stocks to optimize the asset because the predictor is inherently
@@ -136,8 +138,8 @@ They also implement three operations.
 \end{description}
 
 \subsubsection{SimpleNNPredictor}
-The predictor uses the multilayer perception implementation from
-scikit-learn \cite{web:scikit_learn}. It extract the feature by
+This predictor uses the multilayer perception implementation from
+scikit-learn \cite{web:scikit_learn}. It extracts the feature by
 looking back the prior stock price.
 
 The look back date is defined as a vector $\vect{b}$:
@@ -146,7 +148,7 @@ The look back date is defined as a vector $\vect{b}$:
 \vect{b} \gets [89, 55, 34, 21, 13, 8, 5, 3, 2, 1]
 \]
 
-In the training phase, it looks back the stock prices and calculate
+In the training phase, it looks back at the stock prices and calculate
 the price changes $X$ compared to the current price. Suppose the
 current date index is denoted as $i$, the input to the algorithm is:
 
@@ -166,7 +168,7 @@ also from scikit-learn \cite{web:scikit_learn}.
 
 \subsubsection{SentimentPredictor}
 
-The predictor uses New York Times Community API
+This predictor uses New York Times Community API
 \cite{web:nytimes_community_api} to retrieve the customer comments of
 each news article from Jan 1, 2010 to Nov 10, 2016.
 
@@ -229,7 +231,7 @@ def comment_sentiment(comment):
   return float(score) / total
 \end{verbatim}
 
-Then, for a given date, we look back the last 30 days of the sentiment
+Then, for a given date, we look back at the last 30 days of the sentiment
 for the stock and create a feature vector of size 30.
 
 We use a linear regression with stochastic gradient descent from
@@ -239,16 +241,16 @@ date: $priceChange(p_i, p_{i+D})$.
 
 \subsubsection{PatternPredictor}
 
-The predictor uses a table look up method.
+This predictor uses a table look up method.
 
-It extracts the feature vector $\phi(x)$ by looking back the prior
+It extracts the feature vector $\phi(x)$ by looking back at the prior
 stock price. The look back date is defined as a vector $\vect{b}$:
 
 \[
 \vect{b} \gets [0, 1, 2, 3, 5, 8, 13, 21, 34]
 \]
 
-It looks back the stock prices and map the price changes of each
+It looks back at the stock prices and map the price changes of each
 interval to $+1$ (= price went up) or $-1$ (= price went down). When
 there is no price change, we pick $+1$ or $-1$ randomly.
 
@@ -305,7 +307,7 @@ buy before the stock price goes up and to sell before it goes
 down. However, no predictor is perfect.
 
 To learn the optimal trading policy given the uncertain predictions,
-we use a reinforcement learning.
+we use reinforcement learning.
 
 For the sake of discussion, we define some additional variables here.
 \begin{align*}
@@ -444,7 +446,7 @@ def predict(i):
 For QTrader, we tested two different feature extractors for the function approximation; simple and complex.
 
 The simple feature extractor uses just one feature; a product of the predicted
-future price slope and the action value. We use this just for testing purpose.
+future price slope and the action value. We use this just for testing.
 
 \[
 \phi_s(s_i,a_{i+1}) := [m_i \times a_{i+1}]
@@ -494,7 +496,7 @@ asset value.
 
 \subsection{Predictors}
 
-We use stock price data from Yahoo Finance
+We used stock price data from Yahoo Finance
 \cite{web:yahoo_finance}. It provides day-to-day closing stock price
 for the period shown in table \ref{yahooStockData}.
 
@@ -890,10 +892,10 @@ First, we split the data set to training set (till 2015-11-11) and
 test set (after 2015-11-11).
 
 Then, we trained the predictors on the training set. Based on the predictor
-performance analysis in figure \ref{pred-perf-PatternPredictor-7-f1}, we use 100
-iteration for the predictor training.
+performance analysis in figure \ref{pred-perf-PatternPredictor-7-f1}, we used 100
+iterations for the predictor training.
 
-The trader calculate $m_i$, the future price changes slope, by the
+The trader calculates $m_i$, the future price changes slope, by the
 predictions of predictors. We use a various number of a same predictor
 with different $D$ value for the experiment. For example, in one test
 case, we use the combination of three \verb|PatternPredictor| with
