@@ -1,7 +1,9 @@
 \documentclass[twocolumn,10pt]{asme2ej}
 % \usepackage{fullpage,enumitem,amsmath,amssymb,graphicx,bm,listings,algpseudocode,hyperref,url,multirow,caption}
-\usepackage{enumitem,amsmath,amssymb,graphicx,bm,listings,algpseudocode,hyperref,url,multirow,caption,graphicx,appendix}
+\usepackage{enumitem,amsmath,amssymb,graphicx,bm,listings,algpseudocode,hyperref,url,multirow,caption,graphicx,appendix,mathtools}
 \newcommand{\vect}[1]{\boldsymbol{#1}}
+\DeclarePairedDelimiter\ceil{\lceil}{\rceil}
+\DeclarePairedDelimiter\floor{\lfloor}{\rfloor}
 
 \lstdefinestyle{custom}{
   basicstyle=\footnotesize\ttfamily,
@@ -31,7 +33,7 @@
   system over various stock symbols and evaluated the result.
 
   The system consists of two components; reflex model based stock price
-  predictors and a state model based trading policy evaluator and optimizer. The
+  predictors and state model based trading policy optimizers. The
   modularity allowed us to evaluate and optimize the performance of each
   component independently.
   
@@ -106,8 +108,8 @@ A trader uses the prediction and learns the optimal trading policy:
 when to buy/sell how much stocks.
 
 There are five predictors (SimpleNNPredictor, LinearPredictor,
-SentimentPredictor, PatternPredictor, and CheatPredictor) and one
-trader (QTrader). 
+SentimentPredictor, PatternPredictor, and CheatPredictor) and two
+traders (RoteQTrader and QTrader). 
 
 For the purpose of the discussion, we use the following definitions. More
 variables will be defined as needed.
@@ -308,8 +310,8 @@ we use a reinforcement learning.
 For the sake of discussion, we define some additional variables here.
 \begin{align*}
   o_i &:= \text{The number of stocks owned on }i\text{-th day.} \\
-  c_i &:= \text{the maximum number of stocks}\\
-  & \text{we could buy with our current cash on }i\text{-th day.} \\
+  c_i &:= \text{the maximum number of stocks we could}\\
+  & \text{ buy with the current cash on }i\text{-th day.} \\
   m_i &:= \text{the predicted slope by performing a least square} \\
   & \text{polynomial fit over the predicted future price changes.} \\
   r_i &:= \text{the sum of residuals of the predicted slope above.} \\
@@ -322,23 +324,26 @@ asset value $u_n$ is defined:
 u_n = p_n(o_n + c_n)
 \]
 
-\subsubsection{Model}
+We have two traders; RoteQTrader and QTrader. QTrader uses a function approximation while RoteQTrader doesn't.
+
+\subsubsection{Model (RoteQTrader)}
 
 We model the problem as MDP where we don't know the transition function.
 
 \begin{description}
-\item[State] For $i$-th day, the state is defined to have a tuple $(o_i,c_i,m_i,r_i)$.
-
+\item[State] For $i$-th day, the state is defined to have a tuple
+  \[
+  (o_i,\floor*{c_i},I[m_i > 0])
+  \]
 \item[Initial State] Before running MDP starting at day index $start$,
   we initialize the state as follows.
   \begin{itemize}
   \item $o_{start} = 0$
-  \item $o_{start} = 10$
-  \item $m_{start}$ and $r_{start}$ are initialized by a predictor
-    based on the first day.
+  \item $c_{start} = 10$
+  \item $m_{start}$ is initialized by a predictor based on the first day.
   \end{itemize}
   
-\item[Action] The action is an integer in the range: $[-o_i,c_i]$. The
+\item[Action] The action is an integer in the range: $[-o_i,\floor*{c_i}]$. The
   negative value means to sell owned stocks for that amount, and the
   positive value means to buy stocks for that amount.
 
@@ -358,27 +363,45 @@ We model the problem as MDP where we don't know the transition function.
 \item[EndState] $o_i < 1$ or the current date hits end of the period.
 \end{description}
 
-\subsubsection{Algorithm}
+\subsubsection{Model (QTrader)}
 
-We use Q-learning with a function approximation and epsilon-greedy
+The model is same as RoteQTrader except these differences.
+
+\begin{description}
+\item[State] For $i$-th day, the state is defined to have a tuple $(o_i,c_i,m_i,r_i)$.
+
+\item[Initial State] Before running MDP starting at day index $start$,
+  we initialize the state as follows.
+  \begin{itemize}
+  \item $o_{start} = 0$
+  \item $c_{start} = 10$
+  \item $m_{start}$ and $r_{start}$ are initialized by a predictor
+    based on the first day.
+  \end{itemize}
+
+\end{description}
+
+\subsubsection{Algorithm }
+
+RoteQTrader uses Q-learning with epsilon-greedy learning. QTrader uses a function approximation and epsilon-greedy
 learning.
 
-\subsubsection*{Parameters}
+We use the following parameters and definitions.
 
 \begin{align*}
-  \epsilon &:= \text{Parameter for epsilon-greedy policy} \\
-  \phi(state,action) &:= \text{feature extractor} \\
-  \vect{w} &:= \text{weight to learn} \\
-  \hat{Q}_{opt}(s, a; \vect{w}) &:= \vect{w} \cdot \phi(s, a) \\
+  \epsilon &:= 0.9 (\text{epsilon-greedy threshold}) \\
+  \gamma &:= 0.9 (\text{discount factor}) \\
 \end{align*}
 
+In addition, for QTrader, we denote the weights to learn as $\vect{w}$. Consequently, $\hat{Q}_{opt}(s, a; \vect{w})$ is
+defined as follows where $\phi(s,a)$ is the feature extractor.
 
-\subsubsection*{Choose an action}
+\begin{align*}
+  \hat{Q}_{opt}(s, a; \vect{w}) &:= \vect{w} \cdot \phi(s, a) & \text{For QTrader}\\
+\end{align*}
 
-We examine the state and obtain the available actions: $[-o_k,c_k]$.
-
-Based on whether a random number $[0.0, 1.0]$ is greater than
-$\epsilon$, we pick exploration or exploitation.
+For $i$-th day, we pick an action from the range: $[-o_i,\floor*{c_i}]$. Based on whether a random number $[0.0, 1.0]$
+is greater than $\epsilon$, we pick exploration or exploitation.
 
 \[
   \pi_{act}(s) = \\
@@ -388,19 +411,14 @@ $\epsilon$, we pick exploration or exploitation.
   \end{cases}
 \]
 
+On taking an action, the trader gets a reward.
 
-\subsubsection*{Calculate reward}
+\begin{align*}
+  Reward &= u_{i+1} - u_{i} \\
+  &=p_{i+1}(o_{i+1} + c_{i+1}) - p_{i}(o_{i} + c_{i}) \\
+\end{align*}
 
-Based on the action, we calculate the reward.
-
-\[
-  reward = p_{i+1}(o_{i+1} + c_{i+1}) - p_{i}(o_{i} + c_{i})
-\]
-
-\subsubsection*{Transition to the next state}
-
-When an action is taken, MDP moves to the next state, which represents
-the stock market and the current asset of the next day.
+Then MDP moves to the next state, which represents the stock market and the current asset of the next day.
 
 \begin{align*}
   c_{i+1} &\gets (c_{i} - action)\frac{p_i}{p_{i+1}} \\
@@ -408,10 +426,22 @@ the stock market and the current asset of the next day.
   m_{i+1}, r_{i+1} &\gets \text{predict(i+1)} \\
 \end{align*}
 
-\subsubsection*{Feature Extraction}
+The function predict invokes predictors and returns the future stock market trend.
 
-We have two different feature extractors for the function approximation; simple
-and complex.
+\begin{verbatim}
+def predict(i):
+  delta = [0.0]
+  prediction = [0.0]
+  for p in predictors:
+    phiX = p.extractFeature(i)
+    prediction += [p.predict(phiX)]
+    delta      += [p.D]
+  slope, residual = 
+       linear_fit(delta, prediction)
+  return slope, residual
+\end{verbatim}
+
+For QTrader, we tested two different feature extractors for the function approximation; simple and complex.
 
 The simple feature extractor uses just one feature; a product of the predicted
 future price slope and the action value. We use this just for testing purpose.
@@ -427,13 +457,24 @@ use this to predict the actual stock behavior.
 \phi_c(s_i,a_{i+1}) := [m_i \times a_{i+1}, m_i^2 \times a_{i+1}, m_i \times a_{i+1}^2, m_i^2 \times a_{i+1}^2 ]
 \]
 
-\subsubsection*{Update weights}
+RoteQTrader updates $Q_{opt}$ table as follows.
 
-We update the weights as follows.
 \begin{align*}
-\hat{V}_{opt}(s') &\gets \max_{a \in actions(s')}\hat{Q}_{opt}(s', a;\vect{w}) \\
+  \eta &\gets \frac{1}{\text{\# of updates to }\hat{Q}_{opt}(s, a)} \\
+  \hat{Q}_{opt}(s, a)&\gets \hat{Q}_{opt}(s, a) - \eta\left(\hat{Q}_{opt}(s, a) - reward + \gamma \hat{V}_{opt}(s')\right)
+\end{align*}
+
+QTrader updates the weights as follows.
+
+\begin{align*}
 \vect{w} &\gets \vect{w} - \eta[\hat{Q}_{opt}(s, a;\vect{w}) - (reward + \gamma \hat{V}_{opt}(s'))\phi(s,a)
 \end{align*}
+
+Note that
+\[
+  \hat{V}_{opt}(s') &\gets \max_{a \in actions(s')}\hat{Q}_{opt}(s', a)
+\]
+
 
 \subsubsection{Test}
 

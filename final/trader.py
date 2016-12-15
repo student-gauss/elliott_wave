@@ -165,7 +165,7 @@ class RoteQTrader(Trader):
         Trader.__init__(self, predictors)
         
         self.Epsilon = 0.9
-        self.Gamma = 1.0
+        self.Gamma = 0.9
         self.InitialMaxStocksToBuy = 10.0
         self.Qopt = collections.defaultdict(float)
         self.updateCount = collections.defaultdict(float)
@@ -180,13 +180,13 @@ class RoteQTrader(Trader):
             predictionDelta += [predictor.predictionDelta]
         
         m, _ = np.polyfit(predictionDelta, futurePriceChanges, 1)
-#        print 'Prediction. Future Prices: %s, slope: %f' % (futurePrices, m)
-        if m < -0.01:
+#        print 'Prediction. Future Prices: %s, slope: %f' % (futurePriceChanges, m)
+        if m < -0:
             return -1
-        elif m > 0.01:
-            return 1
+        elif m > 0:
+            return +1
         else:
-            return 0
+            return random.choice([-1, +1])
         
     def initState(self, index):
         # Suppose we have budget to buy InitialMaxStocksToBuy stocks initially.
@@ -270,10 +270,17 @@ class RoteQTrader(Trader):
     def test(self, startIndex, endIndex):
 
         stat = collections.defaultdict(int)
+        rote = 0
         for key, value in self.Qopt.iteritems():
             ownedStocks, maxStocksToBuy, prediction, action = key
-#            print 'ownedStocks: %4d, maxStocksToBuy: %4.2f, prediction: %2d, action: %2d -> %4.2f' % (ownedStocks, maxStocksToBuy, prediction, action, value)
+#            print 'ownedStocks: %4d, maxStocksToBuy: %4.2f, prediction: %2d, action: %2d updateCount: %5d -> %4.2f' % (
+#                ownedStocks, maxStocksToBuy, prediction, action, self.updateCount[key], value)
 
+            if self.updateCount[key] == 0:
+                rote += 1
+
+        print 'rote = %5.2d len(self.Qopt) = %5.2f rote rate = %5.2f' % (
+            rote, len(self.Qopt), float(rote) / len(self.Qopt))
         state = None
         for index in range(startIndex, endIndex):
             if state == None:

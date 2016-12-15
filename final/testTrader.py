@@ -11,21 +11,21 @@ from trader import RoteQTrader
 from trader import QTrader
 
 Data = [
-    ('dj', None, None),
-    ('qcom', None, None),
-    ('rut', None, None),
-    ('wmt', None, None),
-    ('hd', None, None),
-    ('low', None, None),
-    ('tgt', None, None),
-    ('cost', None, None),
-    ('nke', None, None),
-    ('ko', None, None),
-    ('xom', None, None),
-    ('cvx', None, None),
-    ('cop', None, None),
-    ('bp', None, None),
-    ('ibm', None, None),
+    # ('dj', None, None),
+    # ('qcom', None, None),
+    # ('rut', None, None),
+    # ('wmt', None, None),
+    # ('hd', None, None),
+    # ('low', None, None),
+    # ('tgt', None, None),
+    # ('cost', None, None),
+    # ('nke', None, None),
+    # ('ko', None, None),
+    # ('xom', None, None),
+    # ('cvx', None, None),
+    # ('cop', None, None),
+    # ('bp', None, None),
+    # ('ibm', None, None),
     ('aapl', None, None),
 ]
 
@@ -109,9 +109,9 @@ def test():
 
 def main(predictorTrainingLoopCount, traderTrainingLoopCount):
     # Train predictors
-    predictors = [PatternPredictor(1), PatternPredictor(3), PatternPredictor(7)]
+#    predictors = [PatternPredictor(1), PatternPredictor(3), PatternPredictor(7)]
 #    predictors = [PatternPredictor(1)]
-#    predictors = [CheatPredictor(1)]
+    predictors = [CheatPredictor(1)]
     for symbol, _, _ in Data:
         # dataToPrice[np.datetime64] := adjusted close price
         # startDate := The first date in the stock data
@@ -125,7 +125,7 @@ def main(predictorTrainingLoopCount, traderTrainingLoopCount):
             trainPredictor(predictor, predictorTrainingLoopCount, 0, len(stocks) - 356)
 
     # Train traders
-    traders = [QTrader(predictors)]
+    traders = [RoteQTrader(predictors)]
     for symbol, _, _ in Data:
         dateToPrice, startDate, lastDate = load(symbol)
 
@@ -149,8 +149,8 @@ def main(predictorTrainingLoopCount, traderTrainingLoopCount):
             gain = trader.test(len(stocks) - 365, len(stocks))
             print '%s, %d, %10.2f' % (symbol, traderTrainingLoopCount, gain)
 
-# for i in np.arange(1, 5, 0.2):
-#     trainingLoopCount = int(10 ** i)
-#     main(100, trainingLoopCount)
-main(100, 100)
+for i in np.arange(1, 5, 0.2):
+    trainingLoopCount = int(10 ** i)
+    main(100, trainingLoopCount)
+# main(100, 100)
 # test()
