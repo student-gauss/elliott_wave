@@ -14,7 +14,7 @@ df[['delta','loop', 'tp', 'fn', 'fp', 'tn', 'accuracy', 'f1']] = df[['delta','lo
 for predictor in ['SimpleNNPredictor', 'LinearPredictor', 'PatternPredictor', 'SentimentPredictor']:
     s = df[(df.predictor==predictor) & (df.delta==7)]
     ax = s.plot(x='loop', y='f1', label='F1 score')
-    ax.set_xlabel('log(iterations)')
+    ax.set_xlabel('Iterations')
     ax.set_xscale('log')
     plt.savefig('pred-perf-%s-7-f1.eps' % predictor)
 

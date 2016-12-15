@@ -279,7 +279,7 @@ class RoteQTrader(Trader):
             if self.updateCount[key] == 0:
                 rote += 1
 
-        print 'rote = %5.2d len(self.Qopt) = %5.2f rote rate = %5.2f' % (
+        print '%5.2d, %5.2f, %5.2f' % (
             rote, len(self.Qopt), float(rote) / len(self.Qopt))
         state = None
         for index in range(startIndex, endIndex):

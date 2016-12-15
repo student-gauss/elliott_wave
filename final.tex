@@ -37,10 +37,10 @@
   modularity allowed us to evaluate and optimize the performance of each
   component independently.
   
-  The result indicates there is probably a weak correlation between the
-  historical stock price behavior and the future stock prices. However, it was
-  hard to build a sensible policy optimizer with the given set of data and
-  training time.
+  The result indicates there is probably a weak correlation between
+  the historical stock price behavior and the future stock prices. The
+  combination of a pattern detection predictor and Q-learning based
+  trader with function approximation showed encouraging result.
 \end{abstract}
 
 \section{Introduction}
@@ -56,13 +56,13 @@ sentiment analysis also became popular recently
 
 Elliott Wave Principle (EWP) is a classical technical analysis method
 \cite{frost1981elliott, web:study_of_cycles}. It is a hypothesis that
-stock market price can be modeled as a sequence of waves which whose
-shapes follow some defined rules. EWP suggests we can predict the
-future market price more accurately than a random chance by
-recognizing the wave pattern.  This is distinct from other stock price
-prediction methods in that it relies solely on the historical price
-changes and doesn't use external information such as market sentiment
-or industrial news.
+stock market price can be modeled as a sequence of waves whose shapes
+follow some defined rules. EWP suggests we can predict the future
+market price more accurately than a random chance by recognizing the
+wave pattern.  This is distinct from other stock price prediction
+methods in that it relies solely on the historical price changes and
+doesn't use external information such as market sentiment or
+industrial news.
 
 EWP has been criticized for its poor performance
 \cite{aronson2007evidence-based}. Notably, for a given stock
@@ -113,12 +113,11 @@ There are five predictors (SimpleNNPredictor, LinearPredictor,
 SentimentPredictor, PatternPredictor, and CheatPredictor) and two
 traders (RoteQTrader and QTrader). 
 
-For the purpose of the discussion, we use the following definitions. More
-variables will be defined as needed.
+For the purpose of the discussion, we use the following definitions.
 
 \begin{align*}
 p_i &:= \text{Stock price of the }i\text{-th day} \\
-priceChange(p_{old}, p_{new}) &:= \frac{p_{new} - p_{old}}{p_{old}}
+h(p_{old}, p_{new}) &:= \frac{p_{new} - p_{old}}{p_{old}}
 \end{align*}
 
 \subsection{Predictors}
@@ -153,18 +152,24 @@ the price changes $X$ compared to the current price. Suppose the
 current date index is denoted as $i$, the input to the algorithm is:
 
 \[
-X_i \gets \left\{priceChange(p_{i - j}, p_i) : j \in \vect{b}\right\}
+X_i \gets \left\{h(p_{i - j}, p_i) : j \in \vect{b}\right\}
 \]
 
-The target value is is the actual stock price change for the given
-future date: $priceChange(p_i, p_{i+D})$.
+The target value is the actual stock price change for the given
+future date: $h(p_i, p_{i+D})$.
 
 The algorithm uses two hidden layers; 3 and 2 nodes each.
 
 \subsubsection{LinearPredictor}
-The predictor is same as SimpleNNPredictor except that the underlying
-algorithm uses a linear regression with stochastic gradient descent,
-also from scikit-learn \cite{web:scikit_learn}.
+The predictor is similar to SimpleNNPredictor except that the
+underlying algorithm uses a linear regression with stochastic gradient
+descent, also from scikit-learn \cite{web:scikit_learn}.
+
+It also uses squared terms in the feature vector.
+
+\[
+X_i \gets \left\{h(p_{i-j}, p_i), h(p_{i-j}, p_i)^2 : j \in \vect{b}\right\}
+\]
 
 \subsubsection{SentimentPredictor}
 
@@ -237,7 +242,7 @@ for the stock and create a feature vector of size 30.
 We use a linear regression with stochastic gradient descent from
 scikit-learn \cite{web:scikit_learn} to train the predictor. The
 target value is is the actual stock price change for the given future
-date: $priceChange(p_i, p_{i+D})$.
+date: $h(p_i, p_{i+D})$.
 
 \subsubsection{PatternPredictor}
 
@@ -251,8 +256,8 @@ stock price. The look back date is defined as a vector $\vect{b}$:
 \]
 
 It looks back at the stock prices and map the price changes of each
-interval to $+1$ (= price went up) or $-1$ (= price went down). When
-there is no price change, we pick $+1$ or $-1$ randomly.
+interval to $+1$ (price went up) or $-1$ (price went down). When there
+is no price change, we pick $+1$ or $-1$ randomly.
 
 For example, suppose we have the stock price history in table
 \ref{patternStockExample}, the the feature vector would be
@@ -298,7 +303,7 @@ estimated target value.
 \subsubsection{CheatPredictor}
 
 The predictor returns the future price changes by actually looking at the
-data. It is used for the testing purpose.
+data. It is used for the testing.
 
 \subsection{Trader}
 
@@ -315,18 +320,19 @@ For the sake of discussion, we define some additional variables here.
   c_i &:= \text{the maximum number of stocks we could}\\
   & \text{ buy with the current cash on }i\text{-th day.} \\
   m_i &:= \text{the predicted slope by performing a least square} \\
-  & \text{polynomial fit over the predicted future price changes.} \\
+  & \text{linear fit over the predicted future price changes.} \\
   r_i &:= \text{the sum of residuals of the predicted slope above.} \\
 \end{align*}
 The goal is to find a trading policy to maximize our asset value $u$
-after the sequence of trades. Suppose the last day index is $n$, the
+after an episode of trades. Suppose the last day index is $n$, the
 asset value $u_n$ is defined:
 
 \[
 u_n = p_n(o_n + c_n)
 \]
 
-We have two traders; RoteQTrader and QTrader. QTrader uses a function approximation while RoteQTrader doesn't.
+We have two traders; RoteQTrader and QTrader. QTrader uses a function
+approximation while RoteQTrader does not.
 
 \subsubsection{Model (RoteQTrader)}
 
@@ -338,36 +344,62 @@ We model the problem as MDP where we don't know the transition function.
   (o_i,\floor*{c_i},I[m_i > 0])
   \]
 \item[Initial State] Before running MDP starting at day index $start$,
-  we initialize the state as follows.
+  we initialize the state so that we have cash to buy up to 10 stocks
+  at the current price.
   \begin{itemize}
   \item $o_{start} = 0$
   \item $c_{start} = 10$
   \item $m_{start}$ is initialized by a predictor based on the first day.
   \end{itemize}
   
-\item[Action] The action is an integer in the range: $[-o_i,\floor*{c_i}]$. The
-  negative value means to sell owned stocks for that amount, and the
-  positive value means to buy stocks for that amount.
+\item[Action] The action is an integer in the range:
+  $[-o_i,\floor*{c_i}]$. A negative value means to sell $|action|$
+  stocks. A positive value means to buy $|action|$ stocks.
 
-\item[Transition] On taking a action, the state moves to the next
-  day. Note that the system doesn't know the next state beyond today.
+\item[Transition] On taking an action, the state is changed to
+  represent the asset of the next day.
+
+\begin{align*}
+  c_{i+1} &\gets (c_{i} - action)\frac{p_i}{p_{i+1}} \\
+  o_{i+1} &\gets o_{i} + action \\
+  m_{i+1} &\gets \text{predict(i+1)} \\
+\end{align*}
+
+The function predict invokes predictors and returns the future stock market trend.
+
+\begin{verbatim}
+def predict(i):
+  delta = [0.0]
+  pred = [0.0]
+  for p in predictors:
+    phiX  =  p.extractFeature(i)
+    pred  += [p.predict(phiX)]
+    delta += [p.D]
+  slope = linear_fit(delta, pred)
+  return slope
+\end{verbatim}
 
 \item[Reward] The reward is the difference of asset value before and
   after the state transition. 
   
-  \[
-  Reward = p_i(o_{i} + c_{i}) - p_{i-1}(o_{i-1} + c_{i-1})
-  \]
+  \begin{align*}
+    Reward &= u_i - u_{i-1} \\
+    &=p_i(o_{i} + c_{i}) - p_{i-1}(o_{i-1} + c_{i-1})
+  \end{align*}
   
   Intuitively, we want to have more stocks when the stock price is
   high and we want to have more cash when the stock price is low.
 
-\item[EndState] $o_i < 1$ or the current date hits end of the period.
+\item[EndState] An episode ends in one of two conditions.
+  \begin{enumerate}
+  \item There is no cash to buy a stock. ($o_i < 1$)
+  \item The current date hits end of the test / training period.
+  \end{enumerate}
 \end{description}
 
 \subsubsection{Model (QTrader)}
 
-The model is same as RoteQTrader except these differences.
+QTrader uses a same model as RoteQTrader except:
 
 \begin{description}
 \item[State] For $i$-th day, the state is defined to have a tuple $(o_i,c_i,m_i,r_i)$.
@@ -383,7 +415,7 @@ The model is same as RoteQTrader except these differences.
 
 \end{description}
 
-\subsubsection{Algorithm }
+\subsubsection{Algorithm}
 
 RoteQTrader uses Q-learning with epsilon-greedy learning. QTrader uses a function approximation and epsilon-greedy
 learning.
@@ -413,40 +445,10 @@ is greater than $\epsilon$, we pick exploration or exploitation.
   \end{cases}
 \]
 
-On taking an action, the trader gets a reward.
-
-\begin{align*}
-  Reward &= u_{i+1} - u_{i} \\
-  &=p_{i+1}(o_{i+1} + c_{i+1}) - p_{i}(o_{i} + c_{i}) \\
-\end{align*}
-
-Then MDP moves to the next state, which represents the stock market and the current asset of the next day.
-
-\begin{align*}
-  c_{i+1} &\gets (c_{i} - action)\frac{p_i}{p_{i+1}} \\
-  o_{i+1} &\gets o_{i} + action \\
-  m_{i+1}, r_{i+1} &\gets \text{predict(i+1)} \\
-\end{align*}
-
-The function predict invokes predictors and returns the future stock market trend.
-
-\begin{verbatim}
-def predict(i):
-  delta = [0.0]
-  prediction = [0.0]
-  for p in predictors:
-    phiX = p.extractFeature(i)
-    prediction += [p.predict(phiX)]
-    delta      += [p.D]
-  slope, residual = 
-       linear_fit(delta, prediction)
-  return slope, residual
-\end{verbatim}
-
-For QTrader, we tested two different feature extractors for the function approximation; simple and complex.
-
-The simple feature extractor uses just one feature; a product of the predicted
-future price slope and the action value. We use this just for testing.
+For QTrader, we tested two different feature extractors for the
+function approximation; simple and complex. The simple feature
+extractor uses just one feature; a product of the predicted future
+price slope and the action value. We use this just for testing.
 
 \[
 \phi_s(s_i,a_{i+1}) := [m_i \times a_{i+1}]
@@ -459,22 +461,22 @@ use this to predict the actual stock behavior.
 \phi_c(s_i,a_{i+1}) := [m_i \times a_{i+1}, m_i^2 \times a_{i+1}, m_i \times a_{i+1}^2, m_i^2 \times a_{i+1}^2 ]
 \]
 
-RoteQTrader updates $Q_{opt}$ table as follows.
+RoteQTrader updates $Q_{opt}(s,a)$ as follows.
 
 \begin{align*}
   \eta &\gets \frac{1}{\text{\# of updates to }\hat{Q}_{opt}(s, a)} \\
-  \hat{Q}_{opt}(s, a)&\gets \hat{Q}_{opt}(s, a) - \eta\left(\hat{Q}_{opt}(s, a) - reward + \gamma \hat{V}_{opt}(s')\right)
+  \hat{Q}_{opt}(s, a)&\gets (1-\eta)\hat{Q}_{opt}(s,a) + \eta\left(reward + \gamma \hat{V}_{opt}(s')\right)
 \end{align*}
 
 QTrader updates the weights as follows.
 
 \begin{align*}
-\vect{w} &\gets \vect{w} - \eta[\hat{Q}_{opt}(s, a;\vect{w}) - (reward + \gamma \hat{V}_{opt}(s'))\phi(s,a)
+\vect{w} &\gets \vect{w} - \eta[\hat{Q}_{opt}(s, a;\vect{w}) - (reward + \gamma \hat{V}_{opt}(s')]\phi(s,a)
 \end{align*}
 
 Note that
 \[
-  \hat{V}_{opt}(s') &\gets \max_{a \in actions(s')}\hat{Q}_{opt}(s', a)
+  \hat{V}_{opt}(s') \gets \max_{a \in actions(s')}\hat{Q}_{opt}(s', a)
 \]
 
 
@@ -483,16 +485,16 @@ Note that
 In test phase, we run the learning algorithm on a new data with the
 following modification.
 
-\begin{itemize}
+\begin{enumerate}
 \item Always choose the optimal action, that is to set $\epsilon = 0$
 \item Skip weight update step.
-\end{itemize}
+\end{enumerate}
 
 Then, see if how much money earned or lost by looking at the final
 asset value.
 
 
-\section{Performance}
+\section{Result}
 
 \subsection{Predictors}
 
@@ -546,9 +548,13 @@ Table \ref{pred-perf-SimpleNNPredictor-1-398}, \ref{pred-perf-SimpleNNPredictor-
 \ref{pred-perf-SimpleNNPredictor-7-398} shows prediction performance of
 SimpleNNPredictor after 398 iteration. We can observe the accuracy is slightly better than 50\%.
 
-However, figure \ref{pred-perf-SimpleNNPredictor-7-f1} shows that the predictor
-performance, in terms of F1 score, does not improve over the training
-iteration. 
+However, figure \ref{pred-perf-SimpleNNPredictor-7-f1} shows that the
+predictor performance, in terms of F1 score, does not improve over the
+training iteration. We suspect the model (NN with two hidden layers)
+is too simple to predict the complex stock behavior or the model is
+too complex to learn anything with the limited data. Due to the
+execution time constraints, we could not use more complex model or
+more iteration; we gave up this approach.
 
 \begin{figure}
   \centering
@@ -564,11 +570,14 @@ Table \ref{pred-perf-LinearPredictor-1-398},
 \ref{pred-perf-LinearPredictor-7-398} shows prediction performance of
 LinearPredictor after 398 iteration. Although we can observe the
 accuracy is slightly better than 50\%, the confusion matrix indicates
-strong bias in the prediction.
+strong bias.
 
 Figure \ref{pred-perf-LinearPredictor-7-f1} shows that the predictor
 performance, in terms of F1 score, does not improve over the training
 iteration. 
+
+The strong bias probably implies the model is too simple to predict
+the complex stock behavior; we gave up this approach.
 
 \begin{figure}
   \centering
@@ -607,15 +616,19 @@ of PatternPredictor after 398 iteration. Although we can observe the
 accuracy is slightly better than 50\%, the confusion matrix indicates
 strong bias in the prediction.
 
-
 Figure \ref{pred-perf-SentimentPredictor-7-f1} shows that the predictor
 performance, in terms of F1 score, does not improve over the training
 iteration. 
 
+The strong bias probably implies the lack of quality data. Notice in
+table \ref{sentiment_keywords} that many stock symbols got just few
+(or even zero) comments used for the sentiment prediction; we gave up
+this approach.
+
 \begin{figure}
   \centering
   \includegraphics[width=5cm]{pred-perf-SentimentPredictor-7-f1}
-  \caption{PatternPredictor F1 score by the number of iterations}
+  \caption{SentimentPredictor F1 score by the number of iterations}
   \label{pred-perf-SentimentPredictor-7-f1}
 \end{figure}
 
@@ -892,24 +905,75 @@ First, we split the data set to training set (till 2015-11-11) and
 test set (after 2015-11-11).
 
 Then, we trained the predictors on the training set. Based on the predictor
-performance analysis in figure \ref{pred-perf-PatternPredictor-7-f1}, we used 100
+performance analysis in Figure \ref{pred-perf-PatternPredictor-7-f1}, we used 100
 iterations for the predictor training.
 
 The trader calculates $m_i$, the future price changes slope, by the
 predictions of predictors. We use a various number of a same predictor
 with different $D$ value for the experiment. For example, in one test
-case, we use the combination of three \verb|PatternPredictor| with
+case, we use the combination of three PatternPredictor with
 $D=1$, $D=3$, and $D=7$.
 
-With the trained predictors, we run \verb|QTrader| on the training
-set. In the training, we pick a start date index randomly and run an
-episode up to 90 days. The process is repeated for the specified
-number of times.
+With the trained predictors, we run a trader on the training set. In
+the training, we pick a start date index randomly and run an episode
+up to 90 days. The process is repeated for the specified number of
+times.
 
-\subsection{Correctness}
+\subsubsection{RoteQTrader}
+
+We start with a combination of RoteQTrader and CheatPredictor with
+$D=1$. Although the predictor always predicts the future trend
+correctly, Table \ref{rotetrader-perf-CheatPredictor-100} shows rather
+poor performance.
+
+\begin{table}
+  \begin{tabular}{crrr}
+    & \multicolumn{3}{c}{Gain (US\$)} \\
+    Symbol & $D=1$ & $D=7$ & $D=[1,3,7]$ \\
+    \hline
+     dj &       -3125.17 & 19044.14&  7541.22 \\
+   qcom &         204.77 &   12.80 &    72.16 \\
+    rut &        1659.40 & 1095.67 &   635.61 \\
+    wmt &          40.43 &  171.50 &   165.24 \\
+     hd &         175.87 &  130.92 &   131.77 \\
+    low &         -32.52 &   18.26 &    28.58 \\
+    tgt &          49.30 &   39.62 &    19.59 \\
+   cost &         -29.38 &  -49.61 &  -137.15 \\
+    nke &         -59.20 &  -78.51 &   -54.05 \\
+     ko &           9.95 &   12.22 &    12.49 \\
+    xom &         114.18 &  112.17 &    81.61 \\
+    cvx &         233.20 &  158.17 &    63.95 \\
+    cop &         -66.51 &  -33.57 &   -58.15 \\
+     bp &         -33.37 &   37.21 &    31.58 \\
+    ibm &         170.66 &  363.08 &   278.15 \\
+    aapl &        -46.07 &   57.87 &    53.02 \\
+  \end{tabular}
+  \caption{RoteTrader with CheatPredictor, 100 iterations}
+  \label{rotetrader-perf-CheatPredictor-100}
+\end{table}
+
+The problem is the rote learning. Figure \ref{rote-CheatPredictor-1}
+shows the number of entries in $\hat{Q}_{opt}(s,a)$ and the number of
+entries which has never been updated. As the number of iterations
+increases, the trader explores more and generates more entries in
+$\hat{Q}_{opt}(s,a)$. Even though we use very simple state and action
+representation, the learning does not catch up the increasing number
+of entries. At any iterations, we use more than half
+$\hat{Q}_{opt}(s,a)$ entries which has never been learned.
+
+\begin{figure}
+  \centering
+  \includegraphics[width=5cm]{rote}
+  \caption{$\hat{Q}_{opt}(s, a)$ total entries and unlearned entries}
+  \label{rote-CheatPredictor-1}
+\end{figure}
+
+This analysis led us to QTrader, a function approximation version.
+
+\subsubsection{QTrader Correctness}
 
 Before trying a complex scenario, we verified the correctness of the
-trader implementation. We use \verb|CheatPredictor| and the simplified
+trader implementation. We use CheatPredictor and the simplified
 feature extractor $\phi_s(s,a)$ so that the performance is not
 impacted by the predictor and we can reason the resultant weights
 easily.
@@ -929,11 +993,41 @@ weight value can be interpreted as follows.
     many stocks as possible.
 \end{enumerate}
 
-Therefore, the trader implementation appears to be sensible.
+Therefore, the trader implementation appears to be sensible. Table
+\ref{trader-perf-CheatPredictor-100} shows the performance on the
+various stock symbols.
 
-\subsection{Running on the test set}
+\begin{table}
+  \begin{tabular}{crrr}
+    & \multicolumn{3}{c}{Gain (US\$)} \\
+    Symbol & $D=1$ & $D=7$ & $D=[1,3,7]$ \\
+    \hline
+     dj &  32953.21 & 14746.74 & 11934.61 \\
+   qcom &     71.91 &   -70.98 &   -25.13 \\
+    rut &   -496.98 &  -614.92 &  -359.55 \\
+    wmt &    101.62 &    65.67 &   123.75 \\
+     hd &    212.94 &    86.65 &   -21.54 \\
+    low &     22.98 &    32.96 &    16.15 \\
+    tgt &      3.20 &    52.20 &    35.35 \\
+   cost &   -282.82 &  -160.18 &   149.76 \\
+    nke &   -153.54 &   -24.20 &    25.73 \\
+     ko &      9.20 &     9.20 &     9.20 \\
+    xom &    102.34 &   102.34 &   102.34 \\
+    cvx &    219.25 &   219.25 &   219.25 \\
+    cop &   -166.18 &    26.48 &   330.06 \\
+     bp &     22.25 &    22.25 &    22.25 \\
+    ibm &    343.56 &   343.56 &   343.56 \\
+   aapl &   -778.27 &   230.87 &   137.77 \\
+    \hline
+    Sum &  32184.67 & 15067.89 & 13043.56 \\
+  \end{tabular}
+  \caption{Trader with CheatPredictor, 100 iterations}
+  \label{trader-perf-CheatPredictor-100}
+\end{table}
 
-According to the predictor analysis, \verb|PatternPredictor| is the
+\subsubsection{Running on the test set}
+
+According to the predictor analysis, PatternPredictor is the
 most sensible predictor in our portfolio. We have conducted these test
 cases. The expectation is that short term prediction should be better
 than the long term prediction. Also, giving multiple prediction points
@@ -946,7 +1040,7 @@ should inform the trader better.
 \end{itemize}
 
 Table \ref{trader-perf-PatternPredictor-100} shows the result. We
-indeed made a money as net, though we lost in some symbols.
+indeed made a money as net, though we lost in some symbols. 
 
 \begin{table}
   \begin{tabular}{crrr}
@@ -978,23 +1072,23 @@ indeed made a money as net, though we lost in some symbols.
 
 \section{Conclusion}
 
-We have successfully confirmed, with the result of \verb|PatternPredictor|, the
-stock market behavior can be predicted by the prior price changes.
+We have successfully confirmed, with the result of PatternPredictor, the
+stock market behavior can be predicted by the prior price changes alone.
 
 The predictor uses table look up algorithm by translating the price
 changes into a sequence of $+1$ or $-1$. We tried more generalized
-algorithms (\verb|SimpleNNPredictor| and \verb|LinearPredictor|) but
+algorithms (SimpleNNPredictor and LinearPredictor) but
 they did not perform well.
 
 It is, in a sense, supported by Elliott Wave Theory, which focuses on
 the wave shape instead of the exact prices. However, by simplifying
 the stock market behavior into a table of 256 entries, it is probable
-that we miss some important features; even \verb|PatternPredictor|
+that we miss some important features; even PatternPredictor
 performs just silightly better than 50\% accuracy anyway. We might be
 able to design a better predictor by using more complex model (more
 hidden layers and/or features) -- it's a future research work.
 
-The other predictor, \verb|SentimentPredictor|, may have potential but
+The other predictor, SentimentPredictor, may have potential but
 didn't perform well in the current configuration. We suspect it's due
 to the lack of data -- the API provided just 62000 comments over the
 six years period. Besides, there are not so many article and user
@@ -1003,12 +1097,17 @@ politics and social matter. Unfortunately, we could not find any other
 convenient free data source. For example, Twitter API does not allow
 us to access older tweets than a few weeks ago.
 
-Despite the challenge of the predictors, the trader works reasonably
-well with \verb|PatternPredictor|, especially when we use three of
-them together to predict the price of different future dates. It is
-especially encouraging to observe that, as an Apple employee, it made
-more than \$140 over last year when AAPL did not perform well.
+For traders, we tried Q-Learning with and without function
+approximation. The analysis on the number of unlearned
+$\hat{Q}_{opt}(s,a)$ entries clearly showed the problem of the rote
+learning.
 
+Despite the challenge of the predictors, Q-learning trader with the
+function approximation works reasonably well with PatternPredictor,
+especially when we use three of them together to predict the price of
+different future dates. It is especially encouraging to observe that,
+as an Apple employee, it made more than \$140 over last year when AAPL
+did not perform well.
 
 \section{Code and Data}
 
