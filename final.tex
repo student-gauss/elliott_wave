@@ -53,7 +53,7 @@ trend based on historical stock
 prices\cite{wiki:technical_analysis}. The fundamental analysis tries
 to predict based on the business's financial statement
 \cite{wiki:fundamental_analysis}. Data mining over the Internet with
-sentiment analysis also became popular recently
+sentiment analysis has also become popular recently
 \cite{web:data_mining_analysis}.
 
 Elliott Wave Principle (EWP) is a classical technical analysis method
@@ -68,7 +68,7 @@ industrial news.
 
 EWP has been criticized for its poor performance
 \cite{aronson2007evidence-based}. Notably, for a given stock
-historical data, the rules yields many different interpretation of the
+historical data, the rules yields many different interpretations of the
 wave shapes. This uncertainty makes the future prediction hard, if not
 impossible, while one can claim the accuracy of the theory
 \emph{after} the fact. In a sense, EWP is so complex
@@ -88,7 +88,7 @@ the sentiment analysis over various data source on the Internet
 Times Community API \cite{web:nytimes_community_api} to retrieve the
 customer comments and use them as a hint to a predictor.
 
-Given we have a sensible predictor, it is still an open question when and how to
+Given we have a sensible predictor, it is still an open question as to when and how to
 trade stocks to optimize the asset because the predictor is inherently
 imperfect. For example, it may not be smart to sell the entire stocks asset
 immediately just because a predictor says price might go down. The trading
@@ -163,7 +163,7 @@ future date: $h(p_i, p_{i+D})$.
 The algorithm uses two hidden layers; 3 and 2 nodes each.
 
 \subsubsection{LinearPredictor}
-The predictor is similar to SimpleNNPredictor except that the
+This predictor is similar to SimpleNNPredictor except that the
 underlying algorithm uses a linear regression with stochastic gradient
 descent, also from scikit-learn \cite{web:scikit_learn}.
 
@@ -333,7 +333,7 @@ asset value $u_n$ is defined:
 u_n = p_n(o_n + c_n)
 \]
 
-We have two traders; RoteQTrader and QTrader. QTrader uses a function
+We have two traders; RoteQTrader and QTrader. QTrader uses function
 approximation while RoteQTrader does not.
 
 \subsubsection{Model (RoteQTrader)}
@@ -419,7 +419,7 @@ QTrader uses a same model as RoteQTrader except:
 
 \subsubsection{Algorithm}
 
-RoteQTrader uses Q-learning with epsilon-greedy learning. QTrader uses a function approximation and epsilon-greedy
+RoteQTrader uses Q-learning with epsilon-greedy learning. QTrader uses function approximation and epsilon-greedy
 learning.
 
 We use the following parameters and definitions.
@@ -484,7 +484,7 @@ Note that
 
 \subsubsection{Test}
 
-In test phase, we run the learning algorithm on a new data with the
+In the test phase, we run the learning algorithm on new data with the
 following modification.
 
 \begin{enumerate}
@@ -1042,7 +1042,7 @@ should inform the trader better.
 \end{itemize}
 
 Table \ref{trader-perf-PatternPredictor-100} shows the result. We
-indeed made a money as net, though we lost in some symbols. 
+indeed made a money as net gain, though we lost in some symbols. 
 
 \begin{table}
   \begin{tabular}{crrr}
